@@ -41,13 +41,15 @@ abstract class OAuth2
 		$this->config = array(
 			// A list of space-delimited, case-sensitive strings. The order does not matter. 
 			// Each string adds an additional access range to the requested scope
-			"scopes" => "", 
+			"scopes" 		=> "", 
 			// If in the client's request is missing the scope parameter
 			// We can either process the request with pre-defined default value (eg. "default_scope" => "basic")
 			// or fail the request (set "default_scope" to FALSE or empty string)
 			// @see http://tools.ietf.org/html/rfc6749#section-4.1.1
 			// @see http://tools.ietf.org/html/rfc6749#section-3.3
 			"default_scope" => false,
+			// the length (chars) of the codes generated. Anything between 32 and 128. Default is 64.
+			"code_size"		=> 64
 			// TODO: add default lifetimes for auth codes, access token, refresh tokens, etc.
 		);
 
@@ -84,7 +86,7 @@ abstract class OAuth2
 		}
 		// verify client_id with some regular expression
  		if (!preg_match($this->clientIdRegEx, $client_id)) {
-			throw new OAuth2Exception("invalid_request", "Client id is malformed");
+			throw new OAuth2Exception("invalid_request", "Client ID is malformed");
 		}
 		// get client_id details from some storage (DB)
 		$client = $this->getClient($client_id);
@@ -101,31 +103,34 @@ abstract class OAuth2
 			$redirect_uri = $client["redirect_uri"];
 		}
 
-		// TODO: After this point we should navigate (redirect) the end-user to the redirect_uri
-		// instead of throwing exceptions
-
 		if (!$response_type) {
+			// Now we know the redirect_uri, but we are unable to redirect to that uri, since we don't know 
+			// where the error parameter should be - in the query (for "code" auth), or in the fragment 
+			// component (for the "token" auth)
 			throw new OAuth2Exception("invalid_request", "Response type parameter is required");
 		}
 		if ($response_type !== "code" AND $response_type !== "token") {
-			throw new OAuth2Exception("unsupported_response_type", "Response type parameter is invalid or unsupported");
+			throw new OAuth2Exception("invalid_request", "Response type parameter is invalid or unsupported");
 		}
+
 		// TODO: check for per-client response_type restrictions
 		// Public clients doesn't need "code"
 		// Confidetial clients may be restricted to use "token" (implicit grant type)
 		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
 
+		// After this point we should navigate (redirect) the end-user to the redirect_uri on errors
+
 		// verify scope with some regular expression
 		if ($scope and !preg_match($this->scopeRegEx, $scope)) {
-			throw new OAuth2Exception("invalid_scope", "The requested scope is invalid or malformed");
+			$this->redirectWithError($response_type, $redirect_uri, "invalid_scope", "The requested scope is invalid or malformed", $state);
 		}
 		// check the scope is supported
 		if ($scope and !$this->checkScope($scope)) {
-			throw new OAuth2Exception("invalid_scope", "The requested scope is invalid or unknown");
+			$this->redirectWithError($response_type, $redirect_uri, "invalid_scope", "The requested scope is invalid or unknown", $state);
 		}
 		// check if requested scope MUST be set
 		if (!$scope and empty($this->config["default_scope"])) {
-			throw new OAuth2Exception("invalid_scope", "The scope is mandatory");
+			$this->redirectWithError($response_type, $redirect_uri, "invalid_scope", "The scope is mandatory", $state);
 		}
 
 		// TODO: check for per-client scope restrictions
@@ -145,6 +150,44 @@ abstract class OAuth2
 	}
 
 	/**
+	 * User Accepts the request
+	 * 
+	 * @param mixed $user_id
+	 */
+	public function grantAccess($user_id)
+	{
+		$request = $this->authRequest();
+
+		// auth code
+		if ($request["response_type"] == "code") {
+			$code = $this->genCode();
+			// save the auth code in some storage (DB)
+			$this->saveAuthCode($user_id, $request["client_id"], $code);
+
+			$params = array(
+				"code" 	=> $code, 
+				"state" => $request["state"]
+			);
+			$location = $this->rebuildUri($request["redirect_uri"], $params, array());
+			$this->redirect($location);
+		}
+		
+		// TODO
+		if ($request["response_type"] == "token") {
+
+		}
+	}
+
+	/**
+	 * User denies access
+	 */
+	public function denyAccess()
+	{
+		$request = $this->authRequest();
+		$this->redirectWithError($request["response_type"], $request["redirect_uri"], "access_denied", "The user denied request", $request["state"]);
+	}
+
+	/**
 	 * Checks the scope is a subset of all supported scopes
 	 *
 	 * @param string
@@ -159,6 +202,95 @@ abstract class OAuth2
 	}
 
 	/**
+	 * Sends http header to redirect user-agent to a specific location and exits the script!
+	 * 
+	 * @param string $location
+	 * @param string $code - Optional
+	 */
+	protected function redirect($location, $code = "302 Found")
+	{
+		header("HTTP/1.1 $code");
+		header("Location: $location");
+		exit;
+	}
+
+	/**
+	 * TODO: this needs rewrite
+	 */
+	protected function redirectWithError($response_type, $redirect_uri, $error, $error_description, $state)
+	{
+		$params = array("error" => $error);
+		if ($error_description) $params["error_description"] = $error_description;
+		if ($state) $params["state"] = $state;
+		if ($response_type == "token") {
+			$location = $this->rebuildUri($redirect_uri, array(), $params);
+		}
+		else {
+			$location = $this->rebuildUri($redirect_uri, $params, array());
+		}
+		$this->redirect($location);
+	}
+
+	/**
+	 * Rebuilds absolute URI based on supplied URI and additional parameters
+	 *
+	 * @param string $uri - An absolute URI (redirect_uri)
+	 * @param array $queries - An associative array to be appended as GET parameters to the URI
+	 * @param array $fragments - An associative array to be appended as GET parameters to the fragment part of the URI
+	 * @return string
+	 */
+	private function rebuildUri($uri, array $queries, array $fragments)
+	{
+		$parse_url = parse_url($uri);
+
+		// query part of the uri
+		$query = $this->rebuildQuery(empty($parse_url["query"]) ? "" : $parse_url["query"], $queries);
+
+		// fragment part of the uri
+		$fragment = $this->rebuildQuery(array(), $fragments);
+
+		return (empty($parse_url["scheme"]) ? "" : $parse_url["scheme"] . "://")
+			.(empty($parse_url["user"]) ? "" : $parse_url["user"] . (empty($parse_url["pass"]) ? "" : ":" . $parse_url["pass"]) . "@")
+			.(empty($parse_url["host"]) ? "" : $parse_url["host"])
+			.(empty($parse_url["port"]) ? "" : ":" . $parse_url["port"])
+			.(empty($parse_url["path"]) ? "" : $parse_url["path"])
+			.(empty($query) ? "" : "?$query")
+			.(empty($fragment) ? "" : "#$fragment");
+	}
+
+	/**
+	 * Rebuilds the query part of the URI with provided query string and additional params
+	 * 
+	 * @param string $query
+	 * @param array $params
+	 * @return string
+	 */
+	protected function rebuildQuery($query, $params)
+	{
+		$query = explode("&",  $parse_url["query"]);
+		$parse_query = array();
+		foreach ($query as $param) {
+			$item = explode("=", $param);
+			$parse_query[$item[0]] = $item[1];
+		}
+		return http_build_query(array_merge($parse_query, $params));
+	}
+
+	/**
+	 * Generates a code
+	 *
+	 * @return string - Unique code
+	 */
+	protected function genCode()
+	{
+		$code = mt_rand() . uniqid(mt_rand(), true) . microtime(true) . mt_rand();
+
+		// SHA-512 produces 128 chars - we can extract only some
+		$len = $this->config["code_size"];
+		return substr(hash('sha512', $code), mt_rand(0, 128 - $len), $len);
+	}
+
+	/**
 	 * Reads client details from storage like DB
 	 * Client SHOULD be previously be registered on the oauth2 server
 	 * @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
@@ -169,4 +301,14 @@ abstract class OAuth2
 	 *  - client_type - "public" or "confidential"
 	 */
 	abstract protected function getClient($client_id);
+
+
+	/**
+	 * Saves authorization request code. Based on this code the client will ask for access token.
+	 * 
+	 * @param $user_id - the value passed in OAuth::grantAccess() method
+	 * @param string $client_id
+	 * @param string $code
+	 */
+	abstract protected function saveAuthCode($user_id, $client_id, $code);
 }

@@ -9,6 +9,7 @@ class OAuth2example extends OAuth2
 		parent::__construct(array(
 			"scopes" 		=> "basic user_id example",
 			"default_scope"	=> "basic",
+			"code_size"		=> 32
 		));
 	}
 
@@ -25,5 +26,10 @@ class OAuth2example extends OAuth2
 		);
 
 		return null;
+	}
+
+	protected function saveAuthCode($user_id, $client_id, $code)
+	{
+		// TODO: save it in the DB
 	}
 }
