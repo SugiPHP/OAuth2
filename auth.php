@@ -10,7 +10,7 @@
  * @version 13.01.22
  */
 
-require "lib/OAuth2.php";
+require "OAuth2example.php";
 
 // According to the RFC, this MUST be the first thing to do: 
 // Auth server MUST verify the identity of the user.
@@ -22,10 +22,8 @@ if (!$user_id) {
 	throw new \Exception("Unknown user");
 }
 
-$auth = new OAuth2(array(
-	"scopes" 		=> "basic user_id example",
-	"default_scope"	=> "basic",
-));
+
+$auth = new OAuth2example();
 try {
 	// check client request
 	$request = $auth->authRequest();

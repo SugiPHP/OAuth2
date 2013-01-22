@@ -8,8 +8,22 @@
 
 require "OAuth2Exception.php";
 
-class OAuth2
+abstract class OAuth2
 {
+	/**
+	 * Regular expression to verify client ID's
+	 * Override this if necessarily
+	 * @var string
+	 */
+	protected $clientIdRegEx = '|^[a-z_0-9]{2,20}$|';
+
+	/**
+	 * Regular expression to verify requested scope
+	 * TODO: rewrite it!
+	 * @var string
+	 */
+	protected $scopeRegEx = '|^[a-zA-Z_0-9\s]{1,200}$|';
+
 	/**
 	 * Storage for configuration settings
 	 * @var array
@@ -62,31 +76,54 @@ class OAuth2
 		$scope = empty($_GET["scope"]) ? NULL : $_GET["scope"];
 		$redirect_uri = empty($_GET["redirect_uri"]) ? NULL : $_GET["redirect_uri"];
 
+		// Check client_id is set
+		// the RFC does not exclude the use of unregistered clients, but we do
+		// @see http://tools.ietf.org/html/rfc6749#section-2.4
 		if (!$client_id) {
 			throw new OAuth2Exception("invalid_request", "Client ID parameter is required");
 		}
-		// TODO: check client_id with some regular expression
-		
-		// TODO: get client_id details from some storage (DB)
-		
-		// TODO: check redirect_uri is the same as stored in the DB for the client
+		// verify client_id with some regular expression
+ 		if (!preg_match($this->clientIdRegEx, $client_id)) {
+			throw new OAuth2Exception("invalid_request", "Client id is malformed");
+		}
+		// get client_id details from some storage (DB)
+		$client = $this->getClient($client_id);
+		if (!$client) {
+			throw new OAuth2Exception("unauthorized_client", "Client does not exist");
+		}
+
+		// check redirect_uri is the same as stored in the DB for the client
+		if ($redirect_uri and $client["redirect_uri"] and $redirect_uri != $client["redirect_uri"]) {
+			throw new OAuth2Exception("invalid_request", "Redirect URI does not match");
+		}
+		// if redirect_uri was not set we'll use registered one
+		if (!$redirect_uri) {
+			$redirect_uri = $client["redirect_uri"];
+		}
+
+		// TODO: After this point we should navigate (redirect) the end-user to the redirect_uri
+		// instead of throwing exceptions
 
 		if (!$response_type) {
 			throw new OAuth2Exception("invalid_request", "Response type parameter is required");
 		}
 		if ($response_type !== "code" AND $response_type !== "token") {
-			throw new OAuth2Exception("invalid_request", "Response type parameter is invalid or unsupported");
+			throw new OAuth2Exception("unsupported_response_type", "Response type parameter is invalid or unsupported");
 		}
 		// TODO: check for per-client response_type restrictions
 		// Public clients doesn't need "code"
 		// Confidetial clients may be restricted to use "token" (implicit grant type)
 		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
 
-		// TODO: check scope with some regular expression
-		
-		if ($scope and !$this->checkScope($scope)) {
-			throw new OAuth2Exception("invalid_scope", "The requested scope is invalid, unknown, or malformed");
+		// verify scope with some regular expression
+		if ($scope and !preg_match($this->scopeRegEx, $scope)) {
+			throw new OAuth2Exception("invalid_scope", "The requested scope is invalid or malformed");
 		}
+		// check the scope is supported
+		if ($scope and !$this->checkScope($scope)) {
+			throw new OAuth2Exception("invalid_scope", "The requested scope is invalid or unknown");
+		}
+		// check if requested scope MUST be set
 		if (!$scope and empty($this->config["default_scope"])) {
 			throw new OAuth2Exception("invalid_scope", "The scope is mandatory");
 		}
@@ -121,4 +158,15 @@ class OAuth2
 		return (count(array_diff($scope, $scopes)) == 0);
 	}
 
+	/**
+	 * Reads client details from storage like DB
+	 * Client SHOULD be previously be registered on the oauth2 server
+	 * @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
+	 * 
+	 * @param string $client_id - unique client ID
+	 * @return array|NULL - An associative array:
+	 *  - redirect_uri string - registered redirect URI
+	 *  - client_type - "public" or "confidential"
+	 */
+	abstract protected function getClient($client_id);
 }
