@@ -7,9 +7,10 @@ class OAuth2example extends OAuth2
 	public function __construct()
 	{
 		parent::__construct(array(
-			"scopes" 		=> "basic user_id example",
-			"default_scope"	=> "basic",
-			"code_size"		=> 32
+			"scopes" 			=> "basic extended",
+			"default_scope"		=> "basic",
+			"code_size"			=> 32,
+			"token_expires_in" 	=> 15*60,
 		));
 	}
 
@@ -31,5 +32,41 @@ class OAuth2example extends OAuth2
 	protected function saveAuthCode($user_id, $client_id, $code)
 	{
 		// TODO: save it in the DB
+	}
+
+	protected function saveToken($user_id, $client_id, $token, $expires)
+	{
+		// TODO: save it in the DB
+	}
+
+
+
+	/**
+	 * Checks the user already had granted access for this client with given scope.
+	 * This method is not part of OAuth2 specification.
+	 * @see OAuth2example::saveAccessGrant()
+	 * 
+	 * @param mixed $user_id
+	 * @param string $client_id
+	 * @param string $scope
+	 * @return boolean
+	 */
+	public function getAccessGranted($user_id, $client_id, $scope)
+	{
+		return ($user_id == 1 and $client_id == "test" and $scope == "basic");
+	}
+
+	/**
+	 * Store information that the user has granted access for the given scope to the client
+	 * This method is not part of OAuth2 specification.
+	 * @see OAuth2example::getAccessGranted()
+	 * 
+	 * @param mixed $user_id
+	 * @param string $client_id
+	 * @param string $scope
+	 */
+	public function saveAccessGrant($user_id, $client_id, $scope)
+	{
+		// TODO: save access grant
 	}
 }

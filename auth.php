@@ -29,10 +29,19 @@ try {
 	$requestParams = $auth->authRequest();
 } catch (OAuth2Exception $e) {
 	echo $e;
+	exit;
+}
+
+// Check if the user already (probably some time ago) has granted access for the scope and for the client.
+// If so, we can skip next step and automatically grant access
+if ($auth->getAccessGranted($user_id, $requestParams["client_id"], $requestParams["scope"])) {
+	$auth->grantAccess($user_id);
 }
 
 if ($_POST) {
 	if ($_POST["submit"] == "Grant access") {
+		// We can store (in the DB) the grant access for further use.
+		$auth->saveAccessGrant($user_id, $requestParams["client_id"], $requestParams["scope"]);
 		$auth->grantAccess($user_id);
 	}
 	else {
@@ -44,10 +53,18 @@ if ($_POST) {
 ?>
 <html>
 <head>
-	<title><?= $requestParams["client_id"];?> needs your authorization</title>
+	<title>Authorization Request</title>
 </head>
 <body>
 	<form method="post" action="">
+		<h2><?= $requestParams["client_id"];?></h2>
+		<p><?= $requestParams["client_id"];?> application needs your:
+			<ul>
+			<?php foreach(explode(" ", $requestParams["scope"]) as $scope): ?>
+				<li><?= $scope; ?> data</li>
+			<?php endforeach; ?>
+			</ul>
+		</p>
 		<input type="submit" name="submit" value="Grant access" />
 		<input type="submit" name="submit" value="Deny access" />
 	</form>

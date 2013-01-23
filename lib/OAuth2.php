@@ -41,16 +41,18 @@ abstract class OAuth2
 		$this->config = array(
 			// A list of space-delimited, case-sensitive strings. The order does not matter. 
 			// Each string adds an additional access range to the requested scope
-			"scopes" 		=> "", 
+			"scopes" 			=> "", 
 			// If in the client's request is missing the scope parameter
 			// We can either process the request with pre-defined default value (eg. "default_scope" => "basic")
 			// or fail the request (set "default_scope" to FALSE or empty string)
 			// @see http://tools.ietf.org/html/rfc6749#section-4.1.1
 			// @see http://tools.ietf.org/html/rfc6749#section-3.3
-			"default_scope" => false,
+			"default_scope" 	=> false,
 			// the length (chars) of the codes generated. Anything between 32 and 128. Default is 64.
-			"code_size"		=> 64
-			// TODO: add default lifetimes for auth codes, access token, refresh tokens, etc.
+			"code_size"			=> 64,
+			// The lifetime of access token in seconds. Defaults to 1 hour.
+			"token_expires_in" 	=> 3600,
+			// TODO: add default lifetimes for auth codes, refresh tokens, etc.
 		);
 
 		// Override default options
@@ -175,9 +177,24 @@ abstract class OAuth2
 			$this->redirect($location);
 		}
 		
-		// TODO
+		// implicit grant type
+		// @see http://tools.ietf.org/html/rfc6749#section-4.2
 		if ($request["response_type"] == "token") {
+			$access_token = $this->genCode();
+			$expires_in = $this->config["token_expires_in"];
 
+			// save token in some storage (DB)
+			$this->saveToken($user_id, $request["client_id"], $access_token, strtotime("+$expires_in seconds"));
+
+			$params = array(
+				"access_token"	=> $access_token,
+				"token_type"	=> "bearer",
+				"expires_in" 	=> $expires_in,
+				"scope"			=> $request["scope"],
+				"state"			=> $request["state"],
+			);
+			$location = $this->rebuildUri($request["redirect_uri"], array(), $params);
+			$this->redirect($location);
 		}
 	}
 
@@ -316,4 +333,6 @@ abstract class OAuth2
 	 * @param string $code
 	 */
 	abstract protected function saveAuthCode($user_id, $client_id, $code);
+
+	abstract protected function saveToken($user_id, $client_id, $token, $expires);
 }
