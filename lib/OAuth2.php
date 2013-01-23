@@ -66,17 +66,30 @@ abstract class OAuth2
 	 *  - "state" RECOMMENDED
 	 *  - "redirect_uri" OPTIONAL
 	 *  - "scope" OPTIONAL - @see http://tools.ietf.org/html/rfc6749#section-3.3
-	 * 
+	 *
+	 * @param array $params - Optional. This is mainly for testing purposes. Defaults to $_GET
 	 * @throws OAuth2Exception
 	 * @return array - An associative array containing validated parameters passed from the client
 	 */
-	public function authRequest()
+	public function authRequest($params = null)
 	{
-		$client_id = empty($_GET["client_id"]) ? NULL : $_GET["client_id"];
-		$response_type = empty($_GET["response_type"]) ? NULL : $_GET["response_type"];
-		$state = empty($_GET["state"]) ? NULL : $_GET["state"];
-		$scope = empty($_GET["scope"]) ? NULL : $_GET["scope"];
-		$redirect_uri = empty($_GET["redirect_uri"]) ? NULL : $_GET["redirect_uri"];
+		if (is_null($params)) $params = $_GET;
+
+		$client_id = empty($params["client_id"]) ? NULL : $params["client_id"];
+		$response_type = empty($params["response_type"]) ? NULL : $params["response_type"];
+		$state = empty($params["state"]) ? NULL : $params["state"];
+		$scope = empty($params["scope"]) ? NULL : $params["scope"];
+		$redirect_uri = empty($params["redirect_uri"]) ? NULL : $params["redirect_uri"];
+
+		if (!$response_type) {
+			// This check is first, because even if we knew the redirect_uri, we cannot redirect to that uri
+			// since we don't know where the error parameter should be - in the query (for "code" auth) or 
+			// in the fragment component (for the "token" auth)
+			throw new OAuth2Exception("invalid_request", "Response type parameter is required");
+		}
+		if ($response_type !== "code" AND $response_type !== "token") {
+			throw new OAuth2Exception("invalid_request", "Response type parameter is invalid or unsupported");
+		}
 
 		// Check client_id is set
 		// the RFC does not exclude the use of unregistered clients, but we do
@@ -96,21 +109,11 @@ abstract class OAuth2
 
 		// check redirect_uri is the same as stored in the DB for the client
 		if ($redirect_uri and $client["redirect_uri"] and $redirect_uri != $client["redirect_uri"]) {
-			throw new OAuth2Exception("invalid_request", "Redirect URI does not match");
+			throw new OAuth2Exception("access_denied", "Redirect URI does not match");
 		}
 		// if redirect_uri was not set we'll use registered one
 		if (!$redirect_uri) {
 			$redirect_uri = $client["redirect_uri"];
-		}
-
-		if (!$response_type) {
-			// Now we know the redirect_uri, but we are unable to redirect to that uri, since we don't know 
-			// where the error parameter should be - in the query (for "code" auth), or in the fragment 
-			// component (for the "token" auth)
-			throw new OAuth2Exception("invalid_request", "Response type parameter is required");
-		}
-		if ($response_type !== "code" AND $response_type !== "token") {
-			throw new OAuth2Exception("invalid_request", "Response type parameter is invalid or unsupported");
 		}
 
 		// TODO: check for per-client response_type restrictions
@@ -267,11 +270,13 @@ abstract class OAuth2
 	 */
 	protected function rebuildQuery($query, $params)
 	{
-		$query = explode("&",  $parse_url["query"]);
 		$parse_query = array();
-		foreach ($query as $param) {
-			$item = explode("=", $param);
-			$parse_query[$item[0]] = $item[1];
+		if ($query) {
+			$query = explode("&",  $query);
+			foreach ($query as $param) {
+				$item = explode("=", $param);
+				$parse_query[$item[0]] = $item[1];
+			}
 		}
 		return http_build_query(array_merge($parse_query, $params));
 	}
