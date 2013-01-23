@@ -3,7 +3,6 @@
  * OAuth2.0 Authorization Server
  * 
  * @package OAuth2
- * @version 13.01.22
  */
 
 require "OAuth2Exception.php";
@@ -77,37 +76,24 @@ abstract class OAuth2
 	{
 		if (is_null($params)) $params = $_GET;
 
-		$client_id = empty($params["client_id"]) ? NULL : $params["client_id"];
 		$response_type = empty($params["response_type"]) ? NULL : $params["response_type"];
-		$state = empty($params["state"]) ? NULL : $params["state"];
-		$scope = empty($params["scope"]) ? NULL : $params["scope"];
+		$client_id = empty($params["client_id"]) ? NULL : $params["client_id"];
 		$redirect_uri = empty($params["redirect_uri"]) ? NULL : $params["redirect_uri"];
+		$scope = empty($params["scope"]) ? NULL : $params["scope"];
+		$state = empty($params["state"]) ? NULL : $params["state"];
 
 		if (!$response_type) {
 			// This check is first, because even if we knew the redirect_uri, we cannot redirect to that uri
 			// since we don't know where the error parameter should be - in the query (for "code" auth) or 
 			// in the fragment component (for the "token" auth)
-			throw new OAuth2Exception("invalid_request", "Response type parameter is required");
+			throw new OAuth2Exception("invalid_request", "Required response type parameter is missing");
 		}
 		if ($response_type !== "code" AND $response_type !== "token") {
 			throw new OAuth2Exception("invalid_request", "Response type parameter is invalid or unsupported");
 		}
 
-		// Check client_id is set
-		// the RFC does not exclude the use of unregistered clients, but we do
-		// @see http://tools.ietf.org/html/rfc6749#section-2.4
-		if (!$client_id) {
-			throw new OAuth2Exception("invalid_request", "Client ID parameter is required");
-		}
-		// verify client_id with some regular expression
- 		if (!preg_match($this->clientIdRegEx, $client_id)) {
-			throw new OAuth2Exception("invalid_request", "Client ID is malformed");
-		}
-		// get client_id details from some storage (DB)
-		$client = $this->getClient($client_id);
-		if (!$client) {
-			throw new OAuth2Exception("unauthorized_client", "Client does not exist");
-		}
+		// Checks client and receives information about the client. In case of error throws OAuth2Exception.
+		$client = $this->checkClient($client_id);
 
 		// check redirect_uri is the same as stored in the DB for the client
 		if ($redirect_uri and $client["redirect_uri"] and $redirect_uri != $client["redirect_uri"]) {
@@ -205,6 +191,89 @@ abstract class OAuth2
 	{
 		$request = $this->authRequest();
 		$this->redirectWithError($request["response_type"], $request["redirect_uri"], "access_denied", "The user denied request", $request["state"]);
+	}
+
+	/**
+	 * Access Token Request
+	 *  - "grant_type" REQUIRED - Value MUST be set to "authorization_code"
+	 *  - "code" REQUIRED - Authorization code received from OAuth2::grantAccess() method
+	 *  - "client_id" REQUIRED
+	 *  - "redirect_uri" REQUIRED
+	 * 
+	 * @see http://tools.ietf.org/html/rfc6749#section-4.1.3
+	 *  
+	 * @param array $params - Optional. This is mainly for testing purposes. Defaults to $_POST
+	 * @throws OAuth2Exception
+	 * @return array - An associative array containing validated parameters passed from the client
+	 */
+	public function tokenRequest($params = null)
+	{
+		// this always MUST be $_POST, but for testing purposes we allow anything
+		if (is_null($params)) $params = $_POST;
+
+		$grant_type = empty($params["grant_type"]) ? NULL : $params["grant_type"];
+		$client_id = empty($params["client_id"]) ? NULL : $params["client_id"];
+		$code = empty($params["code"]) ? NULL : $params["code"];
+		$redirect_uri = empty($params["redirect_uri"]) ? NULL : $params["redirect_uri"];
+
+		if (!$grant_type) {
+			throw new OAuth2Exception("invalid_request", "Required grant type parameter is missing");
+		}
+		if ($grant_type !== "authorization_code") {
+			throw new OAuth2Exception("unsupported_grant_type", "Grant type is invalid or unsupported");	
+		}
+
+		// Checks client and receives information about the client. In case of error throws OAuth2Exception.
+		$client = $this->checkClient($client_id);
+
+		// TODO: check client credentials
+
+		// Check the code
+		if (!$code) {
+			throw new OAuth2Exception("invalid_request", "Required code parameter is missing");
+		}
+
+		// TODO: Check code with RegEx
+		
+		// retrieve stored data associated with the code
+		$codeData = $this->getAuthCode($code);
+
+		if (!$codeData) {
+			throw new OAuth2Exception("invalid_grant", "Invalid code");
+		}
+		if ($codeData["client_id"] != $client_id) {
+			throw new OAuth2Exception("invalid_grant", "Client mismatch");
+		}
+
+		throw new OAuth2Exception("invalid_grant", "Sorry!");
+	}
+
+	/**
+	 * Checks received client_id parameter
+	 *
+	 * @throws OAuth2Exception if client_id parameter is invalid or the client is unregistered
+	 * @param string $client_id
+	 * @return array - Client's registration information
+	 */
+	protected function checkClient($client_id)
+	{
+		// Check client_id is set
+		// the RFC does not exclude the use of unregistered clients, but we do
+		// @see http://tools.ietf.org/html/rfc6749#section-2.4
+		if (!$client_id) {
+			throw new OAuth2Exception("invalid_request", "Required client ID parameter is missing");
+		}
+		// verify client_id with some regular expression
+ 		if (!preg_match($this->clientIdRegEx, $client_id)) {
+			throw new OAuth2Exception("invalid_request", "Client ID is malformed");
+		}
+		// get client_id details from some storage (DB)
+		$client = $this->getClient($client_id);
+		if (!$client) {
+			throw new OAuth2Exception("unauthorized_client", "Client does not exist");
+		}
+
+		return $client;
 	}
 
 	/**
@@ -324,7 +393,6 @@ abstract class OAuth2
 	 */
 	abstract protected function getClient($client_id);
 
-
 	/**
 	 * Saves authorization request code. Based on this code the client will ask for access token.
 	 * 
@@ -334,5 +402,25 @@ abstract class OAuth2
 	 */
 	abstract protected function saveAuthCode($user_id, $client_id, $code);
 
+	/**
+	 * Reads authorization code data from the storage.
+	 * @see OAuth2::saveAuthCode()
+	 * 
+	 * @param string $code
+	 * @return array|NULL - An associative array:
+	 *  - user_id
+	 *  - client_id
+	 *  ...
+	 */
+	abstract protected function getAuthCode($code);
+
+	/**
+	 * Saves access token issued by the server.
+	 * 
+	 * @param $user_id - the value passed in OAuth::grantAccess() method
+	 * @param string $client_id
+	 * @param string $token
+	 * @param integer $expires - timestamp when the token MUST be invalidated
+	 */
 	abstract protected function saveToken($user_id, $client_id, $token, $expires);
 }

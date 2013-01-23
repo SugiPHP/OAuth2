@@ -7,7 +7,6 @@
  *
  * @package OAuth2
  * @category example
- * @version 13.01.22
  */
 
 require "OAuth2example.php";

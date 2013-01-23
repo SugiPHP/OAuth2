@@ -34,6 +34,14 @@ class OAuth2example extends OAuth2
 		// TODO: save it in the DB
 	}
 
+	protected function getAuthCode($code)
+	{
+		return array(
+			"client_id" => "test",
+			"user_id"	=> 1,
+		);
+	}
+
 	protected function saveToken($user_id, $client_id, $token, $expires)
 	{
 		// TODO: save it in the DB

@@ -3,7 +3,6 @@
  * OAuth2.0 Exception
  * 
  * @package OAuth2
- * @version 13.01.22
  */
 
 
