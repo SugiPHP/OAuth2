@@ -7,7 +7,7 @@
 
 require "OAuth2Exception.php";
 
-abstract class OAuth2
+class OAuth2
 {
 	/**
 	 * Regular expression to verify client ID's
@@ -36,6 +36,10 @@ abstract class OAuth2
 	 */
 	public function __construct(array $config = array())
 	{
+		if (!$this instanceof IOAuth2Tokens) {
+			throw new \Exception("To use OAuth2 you must first implement IOAuth2Token");
+		}
+
 		// Default configuration options
 		$this->config = array(
 			// A list of space-delimited, case-sensitive strings. The order does not matter. 
@@ -89,7 +93,11 @@ abstract class OAuth2
 			throw new OAuth2Exception("invalid_request", "Required response type parameter is missing");
 		}
 		if ($response_type !== "code" AND $response_type !== "token") {
-			throw new OAuth2Exception("invalid_request", "Response type parameter is invalid or unsupported");
+			throw new OAuth2Exception("unsupported_response_type", "Response type parameter is invalid or unsupported");
+		}
+
+		if ($response_type === "code" AND !$this instanceof IOAuth2Codes) {
+			throw new OAuth2Exception("unsupported_response_type", "Response type code is unsupported");
 		}
 
 		// Checks client and receives information about the client. In case of error throws OAuth2Exception.
@@ -380,47 +388,4 @@ abstract class OAuth2
 		$len = $this->config["code_size"];
 		return substr(hash('sha512', $code), mt_rand(0, 128 - $len), $len);
 	}
-
-	/**
-	 * Reads client details from storage like DB
-	 * Client SHOULD be previously be registered on the oauth2 server
-	 * @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
-	 * 
-	 * @param string $client_id - unique client ID
-	 * @return array|NULL - An associative array:
-	 *  - redirect_uri string - registered redirect URI
-	 *  - client_type - "public" or "confidential"
-	 */
-	abstract protected function getClient($client_id);
-
-	/**
-	 * Saves authorization request code. Based on this code the client will ask for access token.
-	 * 
-	 * @param $user_id - the value passed in OAuth::grantAccess() method
-	 * @param string $client_id
-	 * @param string $code
-	 */
-	abstract protected function saveAuthCode($user_id, $client_id, $code);
-
-	/**
-	 * Reads authorization code data from the storage.
-	 * @see OAuth2::saveAuthCode()
-	 * 
-	 * @param string $code
-	 * @return array|NULL - An associative array:
-	 *  - user_id
-	 *  - client_id
-	 *  ...
-	 */
-	abstract protected function getAuthCode($code);
-
-	/**
-	 * Saves access token issued by the server.
-	 * 
-	 * @param $user_id - the value passed in OAuth::grantAccess() method
-	 * @param string $client_id
-	 * @param string $token
-	 * @param integer $expires - timestamp when the token MUST be invalidated
-	 */
-	abstract protected function saveToken($user_id, $client_id, $token, $expires);
 }

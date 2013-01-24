@@ -18,5 +18,4 @@ try {
 	$requestParams = $auth->tokenRequest($_GET);
 } catch (OAuth2Exception $e) {
 	echo $e;
-	exit;
 }

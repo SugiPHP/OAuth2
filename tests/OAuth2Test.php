@@ -16,7 +16,7 @@ class OAuth2Test extends PHPUnit_Framework_TestCase {
 
 	/**
 	 * @expectedException OAuth2Exception
-	 * @expectedExceptionMessage invalid_request
+	 * @expectedExceptionMessage unsupported_response_type
 	 */
 	public function testAuthRequestWithUnrecognizedOrMalformedResponseType()
 	{

@@ -1,8 +1,10 @@
 <?php
 
 require "lib/OAuth2.php";
+require "lib/IOAuth2Tokens.php";
+require "lib/IOAuth2Codes.php";
 
-class OAuth2example extends OAuth2
+class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 {
 	public function __construct()
 	{
@@ -14,7 +16,7 @@ class OAuth2example extends OAuth2
 		));
 	}
 
-	protected function getClient($client_id)
+	function getClient($client_id)
 	{
 		if ($client_id == "test") return array(
 			"redirect_uri" 	=> "http://localhost",
@@ -29,22 +31,22 @@ class OAuth2example extends OAuth2
 		return null;
 	}
 
-	protected function saveAuthCode($user_id, $client_id, $code)
+	function saveToken($user_id, $client_id, $token, $expires)
 	{
 		// TODO: save it in the DB
 	}
 
-	protected function getAuthCode($code)
+	function saveAuthCode($user_id, $client_id, $code)
+	{
+		// TODO: save it in the DB
+	}
+
+	function getAuthCode($code)
 	{
 		return array(
 			"client_id" => "test",
 			"user_id"	=> 1,
 		);
-	}
-
-	protected function saveToken($user_id, $client_id, $token, $expires)
-	{
-		// TODO: save it in the DB
 	}
 
 
