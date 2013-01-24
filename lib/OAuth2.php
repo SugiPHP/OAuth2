@@ -30,14 +30,15 @@ class OAuth2
 	protected $config;
 
 	/**
-	 * Creates an OAuth2 instance
+	 * Creates an OAuth2 instance.
+	 * No direct creation!
 	 *
 	 * @param array $config
 	 */
-	public function __construct(array $config = array())
+	protected function __construct(array $config = array())
 	{
 		if (!$this instanceof IOAuth2Tokens) {
-			throw new \Exception("To use OAuth2 you must first implement IOAuth2Token");
+			throw new \Exception("To use OAuth2 you must first implement IOAuth2Tokens");
 		}
 
 		// Default configuration options
@@ -53,9 +54,12 @@ class OAuth2
 			"default_scope" 	=> false,
 			// the length (chars) of the codes generated. Anything between 32 and 128. Default is 64.
 			"code_size"			=> 64,
+			// The lifetime of the auth code in seconds. Defaults to 30 seconds.
+			"code_expires_in"	=> 30,
 			// The lifetime of access token in seconds. Defaults to 1 hour.
 			"token_expires_in" 	=> 3600,
-			// TODO: add default lifetimes for auth codes, refresh tokens, etc.
+			// The lifetime of refresh token in seconds. Defaults to 30 days
+			"refresh_token_expires_in"	=> 2592000, 
 		);
 
 		// Override default options
@@ -161,7 +165,8 @@ class OAuth2
 		if ($request["response_type"] == "code") {
 			$code = $this->genCode();
 			// save the auth code in some storage (DB)
-			$this->saveAuthCode($user_id, $request["client_id"], $code);
+			$expires_in = $this->config["code_expires_in"];
+			$this->saveAuthCode($user_id, $request["client_id"], $code, strtotime("+$expires_in seconds"), $request["redirect_uri"]);
 
 			$params = array(
 				"code" 	=> $code, 
@@ -252,8 +257,43 @@ class OAuth2
 		if ($codeData["client_id"] != $client_id) {
 			throw new OAuth2Exception("invalid_grant", "Client mismatch");
 		}
+		if ($codeData["expires"] < time()) {
+			throw new OAuth2Exception("invalid_grant", "Code expired");
+		}
+		if ($codeData["redirect_uri"] and ($codaData["redirect_uri"] != $redirect_uri)) {
+			throw new OAuth2Exception("invalid_grant", "Redirect URI mismatch");
+		}
 
-		throw new OAuth2Exception("invalid_grant", "Sorry!");
+		// Now we have the authenticated user
+		$user_id = $codeData["user_id"];
+
+		$access_token = $this->genCode();
+		$expires_in = $this->config["token_expires_in"];
+
+		// save token in some storage (DB)
+		$this->saveToken($user_id, $client_id, $access_token, strtotime("+$expires_in seconds"));
+
+		$params = array(
+			"access_token"	=> $access_token,
+			"token_type"	=> "bearer",
+			"expires_in" 	=> $expires_in,
+		);
+
+		// TODO 
+		if ($this instanceof IOAuth2RefreshTokens) {
+			$refresh_token = $this->genCode();
+			$refresh_token_expires_in = $this->config["refresh_token_expires_in"];
+			// ???
+			$this->saveRefreshToken($user_id, $client_id, $refresh_token, "+$refresh_token_expires_in seconds");
+
+			$params["refresh_token"] = $refresh_token;
+		}
+
+		header("HTTP/1.1 200 OK");
+		header("Content-Type: application/json;charset=UTF-8");
+		header("Cache-Control: no-store");
+		header("Pragma: no-cache");
+		echo json_encode($params);
 	}
 
 	/**

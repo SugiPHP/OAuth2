@@ -13,6 +13,7 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 			"default_scope"		=> "basic",
 			"code_size"			=> 32,
 			"token_expires_in" 	=> 15*60,
+			"code_expires_in"	=> 30,
 		));
 	}
 
@@ -36,7 +37,7 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 		// TODO: save it in the DB
 	}
 
-	function saveAuthCode($user_id, $client_id, $code)
+	function saveAuthCode($user_id, $client_id, $code, $expires, $redirect_uri)
 	{
 		// TODO: save it in the DB
 	}
@@ -44,11 +45,12 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 	function getAuthCode($code)
 	{
 		return array(
-			"client_id" => "test",
-			"user_id"	=> 1,
+			"client_id" 	=> "test",
+			"user_id"		=> 1,
+			"expires" 		=> time() + 15,
+			"redirect_uri" 	=> ""
 		);
 	}
-
 
 
 	/**

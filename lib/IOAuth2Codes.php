@@ -17,17 +17,18 @@ interface IOauth2Codes
 	 * @param string $client_id
 	 * @param string $code
 	 */
-	function saveAuthCode($user_id, $client_id, $code);
+	function saveAuthCode($user_id, $client_id, $code, $expires, $redirect_uri);
 
 	/**
 	 * Reads authorization code data from the storage.
-	 * @see OAuth2::saveAuthCode()
+	 * @see IOAuth2Codes::saveAuthCode()
 	 * 
 	 * @param string $code
 	 * @return array|NULL - An associative array:
 	 *  - user_id
 	 *  - client_id
-	 *  ...
+	 *  - expires
+	 *  - redirect_uri
 	 */
 	function getAuthCode($code);
 }

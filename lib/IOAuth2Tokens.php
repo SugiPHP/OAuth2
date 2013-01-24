@@ -25,7 +25,7 @@ interface IOAuth2Tokens
 	/**
 	 * Saves access token issued by the server.
 	 * 
-	 * @param $user_id - the value passed in OAuth::grantAccess() method
+	 * @param $user_id - the value passed in OAuth2::grantAccess() method
 	 * @param string $client_id
 	 * @param string $token
 	 * @param integer $expires - timestamp when the token MUST be invalidated
