@@ -12,16 +12,23 @@ class OAuth2
 	/**
 	 * Regular expression to verify client ID's
 	 * Override this if necessarily
+	 * @see http://tools.ietf.org/html/rfc6749#section-2.2
 	 * @var string
 	 */
-	protected $clientIdRegEx = '|^[a-z_0-9]{2,20}$|';
+	protected $clientIdRegEx = '#^[a-z_0-9]{2,20}$#';
+
+	/**
+	 * Regular expression for client type
+	 * @see http://tools.ietf.org/html/rfc6749#section-2.1
+	 * @var string
+	 */
+	protected $clientTypeRegEx = '#^(public|confidential)$#';
 
 	/**
 	 * Regular expression to verify requested scope
-	 * TODO: rewrite it!
 	 * @var string
 	 */
-	protected $scopeRegEx = '|^[a-zA-Z_0-9\s]{1,200}$|';
+	protected $scopeRegEx = '#^[a-zA-Z_0-9]{2,16}(\s+[a-zA-Z_0-9]{2,16})*$#';
 
 	/**
 	 * Storage for configuration settings
@@ -92,11 +99,12 @@ class OAuth2
 	}
 
 	/**
-	 * [handleException description]
-	 * @param  [type] $e [description]
-	 * @return [type]    [description]
+	 * Handles an exception thrown by this class, typically by printing JSON encoded errors, or by redirecting user-agent to 
+	 * a specific location with error messages as a query parameter or in fragment components of the URI
+	 * 
+	 * @param OAuth2Exception $e
 	 */
-	public function handleException($e)
+	public function handleException(OAuth2Exception $e)
 	{
 		if (!$this->redirect_uri) {
 			echo $e;
@@ -151,12 +159,16 @@ class OAuth2
 			throw new OAuth2Exception("unsupported_response_type", "Response type parameter is invalid or unsupported");
 		}
 
+		if ($response_type === "code" AND !$this instanceof IOAuth2Codes) {
+			throw new OAuth2Exception("unsupported_response_type", "Authorization code grant type is not supported");
+		}
+
+		if ($response_type === "token" AND !$this instanceof IOAuth2Implicit) {
+			throw new OAuth2Exception("unsupported_response_type", "Implicit grant type is not supported");
+		}
+
 		$request["response_type"] = $response_type;
 		$this->response_type = $response_type;
-
-		if ($response_type === "code" AND !$this instanceof IOAuth2Codes) {
-			throw new OAuth2Exception("unsupported_response_type", "Response type is not supported");
-		}
 
 		// Checks client and receives information about the client. If something is wrong the OAuth2Exception will be thrown
 		$client = $this->checkClient($client_id);
@@ -288,7 +300,6 @@ class OAuth2
 		$client = $this->checkClient($client_id);
 
 		// TODO: check client credentials
-
 		// Check the code
 		if (!$code) {
 			throw new OAuth2Exception("invalid_request", "Required code parameter is missing");

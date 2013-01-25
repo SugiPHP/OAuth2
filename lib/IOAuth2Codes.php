@@ -5,10 +5,13 @@
  * @package OAuth2
  */
 
+require_once __DIR__ . "/IOAuth2Tokens.php";
+
 /**
- * Implement this interface to use authorization codes
+ * Implement this interface to use authorization codes.
+ * @see http://tools.ietf.org/html/rfc6749#section-1.3.1
  */
-interface IOauth2Codes
+interface IOauth2Codes extends IOAuth2Tokens
 {
 	/**
 	 * Saves authorization request code. Based on this code the client will ask for access token.
@@ -31,4 +34,7 @@ interface IOauth2Codes
 	 *  - redirect_uri
 	 */
 	function getAuthCode($code);
+
+	
+	function checkClientCredentials($client_id, $client_password);
 }

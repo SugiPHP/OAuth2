@@ -1,4 +1,11 @@
 <?php
+/**
+ * OAuth2.0 Authorization Server example
+ * This is (and will not be) production ready example.
+ * Use it as a reference only!
+ * 
+ * @package OAuth2
+ */
 
 require "lib/OAuth2.php";
 require "lib/IOAuth2Tokens.php";
@@ -13,8 +20,8 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 			"scopes" 			=> "basic extended",
 			"default_scope"		=> "basic",
 			"code_size"			=> 32,
-			"token_expires_in" 	=> 900, // 15 minutes
 			"code_expires_in"	=> 180, // much more than needed. Only for testing purposes
+			"token_expires_in" 	=> 900, // 15 minutes
 		));
 	}
 
@@ -53,7 +60,7 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 	}
 
 	/**
-	 * Implements IOAuth2Tokens::saveAuthCode()
+	 * Implements IOAuth2Codes::saveAuthCode()
 	 */
 	function saveAuthCode($user_id, $client_id, $code, $expires, $redirect_uri)
 	{
@@ -61,7 +68,7 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 	}
 
 	/**
-	 * Implements IOAuth2Tokens::getAuthCode()
+	 * Implements IOAuth2Codes::getAuthCode()
 	 */
 	function getAuthCode($code)
 	{
@@ -73,6 +80,13 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 		);
 	}
 
+	/**
+	 * Implements IOAuth2Codes::checkClientCredentials()
+	 */
+	function checkClientCredentials($client_id, $client_password)
+	{
+		return true;
+	}
 
 
 	/*
@@ -106,5 +120,35 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 	public function saveAccessGrant($user_id, $client_id, $scope)
 	{
 		// TODO: save access grant
+	}
+
+
+	/**
+	 * This is not part of the OAuth2.
+	 * Only for reference what info is needed for client registrations.
+	 * 
+	 * @param string $client_id - REQUIRED
+	 * @param string $client_type - REQUIRED one of "confidential" or "public"
+	 * @param string $redirect_uri - REQUIRED
+	 * @param string $client_secret - not required by the standard if the client type is public.
+	 * Client secret can be omitted if some other form of authentication for confidential clients are
+	 * implemented (e.g. public/private key pair) @see http://tools.ietf.org/html/rfc6749#section-2.3
+	 */
+	public function saveClient($client_id, $client_type, $redirect_uri, $client_secret)
+	{
+		if (!preg_match($this->clientIdRegEx, $client_id)) {
+			throw new OAuth2Exception("client_id", "Client ID is invalid");
+		}
+		// TODO: check client_id exists
+
+		if (!preg_match($this->clientTypeRegEx, $client_type)) {
+			throw new OAuth2Exception("client_type", "Client type is invalid");
+		}
+
+		// TODO: check redirect_uri
+		
+		if (!$client_secret and $client_type == "confidential") {
+			throw new OAuth2Exception("client_secret", "Client secret must be provided for confidential clients");
+		}
 	}
 }
