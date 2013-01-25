@@ -7,11 +7,12 @@
  * @package OAuth2
  */
 
-require "lib/OAuth2.php";
-require "lib/IOAuth2Tokens.php";
-require "lib/IOAuth2Codes.php";
+require __DIR__ . "/lib/OAuth2.php";
+require __DIR__ . "/lib/IOAuth2Tokens.php";
+require __DIR__ . "/lib/IOAuth2Codes.php";
+require __DIR__ . "/lib/IOAuth2Implicit.php";
 
-class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
+class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit
 {
 	
 	public function __construct()
@@ -25,27 +26,19 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 		));
 	}
 
-
-	protected function redirect($location, $code = "302 Found")
-	{
-		echo $location;
-		exit;
-	}
-
-
 	/**
 	 * Implements IOAuth2Tokens::getClient()
 	 */
 	function getClient($client_id)
 	{
 		if ($client_id == "test") return array(
-			"redirect_uri" 	=> "http://localhost",
-			"client_type" 	=> "public" // "public" or "confidential"
+			"redirect_uri" 	=> "http://client.auth.loc/redirect.php",
+			"client_type" 	=> "confidential" // "public" or "confidential"
 		);
 
-		if ($client_id == "test2") return array(
-			"redirect_uri" 	=> "http://localhost/",
-			"client_type" 	=> "confidential"
+		if ($client_id == "pubtest") return array(
+			"redirect_uri" 	=> "http://client.auth.loc/redirect.php",
+			"client_type" 	=> "public"
 		);
 
 		return null;

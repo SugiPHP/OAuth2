@@ -176,10 +176,29 @@ class OAuth2
 		$request["client_id"] = $client_id;
 		$this->client_id = $client_id;
 
+		// TODO: add support for Dynamic Configurations, like registering only part of the redirect_uri, multiple redirectrions URIs
+		// or if no redirection URI has beed registered
+		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.3
+		if (!$redirect_uri AND (!$client["redirect_uri"] OR is_array($client["redirect_uri"]) /* OR strpos($client["redirect_uri"] , "*") >= 0 */)) {
+			throw new OAuth2Exception("access_denied", "Dynamic configurations for redirection endpoints require redirect URI parameter");
+		}
+
+		// public clients
+		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
+		if ($client["client_type"] == "public" AND !$redirect_uri) {
+			throw new OAuth2Exception("access_denied", "Public clients MUST register their redirection endpoints");
+		}
+		// confidential client utilizing the implicit grant type
+		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
+		if ($client["client_type"] == "confidential" AND $response_type == "token" AND !$redirect_uri) {
+			throw new OAuth2Exception("access_denied", "Public clients MUST register their redirection endpoints");
+		}
+
 		// check redirect_uri is the same as stored in the DB for the client
 		if ($redirect_uri and $client["redirect_uri"] and $redirect_uri != $client["redirect_uri"]) {
 			throw new OAuth2Exception("access_denied", "Redirect URI does not match");
 		}
+		
 		// if redirect_uri was not set we'll use registered one
 		if (!$redirect_uri) {
 			$redirect_uri = $client["redirect_uri"];
