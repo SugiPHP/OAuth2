@@ -21,8 +21,6 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 
 	protected function redirect($location, $code = "302 Found")
 	{
-		//header("HTTP/1.1 $code");
-		//header("Location: $location");
 		echo $location;
 		exit;
 	}

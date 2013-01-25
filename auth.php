@@ -23,7 +23,13 @@ if (!$user_id) {
 
 
 $auth = new OAuth2example();
-$request = $auth->authRequest();
+try {
+	$request = $auth->authRequest($_GET);
+} catch (OAuth2Exception $e) {
+	$auth->handleException($e);
+	exit;
+}
+
 
 // Check if the user already (probably some time ago) has granted access for the scope and for the client.
 // If so, we can skip next step and automatically grant access

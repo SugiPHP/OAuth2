@@ -8,7 +8,6 @@
 
 class OAuth2Exception extends \Exception
 {
-	public $error;
 	public $error_description;
 
 	public function __construct($error, $error_description)
@@ -21,6 +20,6 @@ class OAuth2Exception extends \Exception
 
 	public function __toString()
 	{
-		return json_encode(array("error" => $this->error, "error_description" => $this->error_description));
+		return json_encode(array("error" => $this->getMessage(), "error_description" => $this->error_description));
 	}
 }

@@ -17,5 +17,5 @@ try {
 	// check client request
 	$requestParams = $auth->tokenRequest($_GET);
 } catch (OAuth2Exception $e) {
-	echo $e;
+	$auth->handleException($e);
 }
