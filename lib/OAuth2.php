@@ -31,7 +31,7 @@ class OAuth2
 
 	/**
 	 * Creates an OAuth2 instance.
-	 * No direct creation!
+	 * Implementor of the OAuth2 server cannot use this class directly.
 	 *
 	 * @param array $config
 	 */
@@ -69,6 +69,75 @@ class OAuth2
 	}
 
 	/**
+	 * Keeping this method simple as possible, so it can be easily overridden
+	 */
+	public function authRequest()
+	{
+		$request = $this->validateAuthRequest($_GET);
+		
+		// Custom implementations can do some additional checks:
+		// Check for per-client response_type restrictions. Public clients doesn't need "code" and 
+		// confidential clients might be restricted to use "token" (implicit grant type)
+		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
+		// 
+		// and check for per-client scope restrictions
+
+		extract($request);
+
+		if (!empty($error)) {
+			if (empty($redirect_uri)) {
+				echo json_encode($request);
+				exit;
+			}
+
+			if ($response_type == "code") {
+				$location = $this->rebuildUri($redirect_uri, array("error" => $error, "error_description" => $error_description, "state" => $state), array());
+			}
+			else {
+				$location = $this->rebuildUri($redirect_uri, array(), array("error" => $error, "error_description" => $error_description, "state" => $state));
+			}
+			$this->redirect($location);
+		}
+
+		return $request;
+	}
+
+	public function denyAccess()
+	{
+		$result = $this->createDenyAccess();
+		extract($result);
+
+		if ($response_type == "code") {
+			$location = $this->rebuildUri($redirect_uri, array("error" => $error, "error_description" => $error_description, "state" => $state), array());
+		}
+		else {
+			$location = $this->rebuildUri($redirect_uri, array(), array("error" => $error, "error_description" => $error_description, "state" => $state));
+		}
+
+		$this->redirect($location);
+	}
+
+	public function grantAccess($user_id)
+	{
+		$result = $this->createGrantAccess($user_id);
+		extract($result);
+
+		if ($response_type == "code") {
+			$location = $this->rebuildUri($redirect_uri, array("code" => $code, "state" => $state), array());
+		}
+		else {
+			$location = $this->rebuildUri($redirect_uri, array(), array(
+				"access_token"	=> $access_token,
+				"token_type"	=> $token_type,
+				"expires_in" 	=> $expires_in,
+				"scope"			=> $scope,
+				"state"			=> $state,
+			));
+		}
+		$this->redirect($location);
+	}
+
+	/**
 	 * Authorization Request
 	 *  - "response_type" REQUIRED - @see http://tools.ietf.org/html/rfc6749#section-3.1.1
 	 *  - "client_id" REQUIRED - @see http://tools.ietf.org/html/rfc6749#section-4.1.1
@@ -76,80 +145,81 @@ class OAuth2
 	 *  - "redirect_uri" OPTIONAL
 	 *  - "scope" OPTIONAL - @see http://tools.ietf.org/html/rfc6749#section-3.3
 	 *
-	 * @param array $params - Optional. This is mainly for testing purposes. Defaults to $_GET
-	 * @throws OAuth2Exception
+	 * @param array $params - GET or POST request
 	 * @return array - An associative array containing validated parameters passed from the client
 	 */
-	public function authRequest($params = null)
+	protected function validateAuthRequest($params)
 	{
-		if (is_null($params)) $params = $_GET;
-
 		$response_type = empty($params["response_type"]) ? NULL : $params["response_type"];
 		$client_id = empty($params["client_id"]) ? NULL : $params["client_id"];
 		$redirect_uri = empty($params["redirect_uri"]) ? NULL : $params["redirect_uri"];
 		$scope = empty($params["scope"]) ? NULL : $params["scope"];
 		$state = empty($params["state"]) ? NULL : $params["state"];
 
+		// Filtered request
+		$request = array();
+		// nothing to check for state
+		$request["state"] = $state;
+
 		if (!$response_type) {
 			// This check is first, because even if we knew the redirect_uri, we cannot redirect to that uri
 			// since we don't know where the error parameter should be - in the query (for "code" auth) or 
 			// in the fragment component (for the "token" auth)
-			throw new OAuth2Exception("invalid_request", "Required response type parameter is missing");
+			return array("error" => "invalid_request", "error_description" => "Required response type parameter is missing");
 		}
 		if ($response_type !== "code" AND $response_type !== "token") {
-			throw new OAuth2Exception("unsupported_response_type", "Response type parameter is invalid or unsupported");
+			return array("error" => "unsupported_response_type", "error_description" => "Response type parameter is invalid or unsupported");
 		}
+
+		$request["response_type"] = $response_type;
 
 		if ($response_type === "code" AND !$this instanceof IOAuth2Codes) {
-			throw new OAuth2Exception("unsupported_response_type", "Response type code is unsupported");
+			return array("error" => "unsupported_response_type", "error_description" => "Response type is not supported");
 		}
 
-		// Checks client and receives information about the client. In case of error throws OAuth2Exception.
+		// Checks client and receives information about the client
 		$client = $this->checkClient($client_id);
+		if (!empty($client["error"])) {
+			return $client;
+		}
+
+		$request["client_id"] = $client_id;
 
 		// check redirect_uri is the same as stored in the DB for the client
 		if ($redirect_uri and $client["redirect_uri"] and $redirect_uri != $client["redirect_uri"]) {
-			throw new OAuth2Exception("access_denied", "Redirect URI does not match");
+			return array("error" => "access_denied", "error_description" => "Redirect URI does not match");
 		}
 		// if redirect_uri was not set we'll use registered one
 		if (!$redirect_uri) {
 			$redirect_uri = $client["redirect_uri"];
 		}
 
-		// TODO: check for per-client response_type restrictions
-		// Public clients doesn't need "code"
-		// Confidetial clients may be restricted to use "token" (implicit grant type)
-		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
+		$request["redirect_uri"] = $redirect_uri;
 
 		// After this point we should navigate (redirect) the end-user to the redirect_uri on errors
 
 		// verify scope with some regular expression
 		if ($scope and !preg_match($this->scopeRegEx, $scope)) {
-			$this->redirectWithError($response_type, $redirect_uri, "invalid_scope", "The requested scope is invalid or malformed", $state);
-		}
-		// check the scope is supported
-		if ($scope and !$this->checkScope($scope)) {
-			$this->redirectWithError($response_type, $redirect_uri, "invalid_scope", "The requested scope is invalid or unknown", $state);
-		}
-		// check if requested scope MUST be set
-		if (!$scope and empty($this->config["default_scope"])) {
-			$this->redirectWithError($response_type, $redirect_uri, "invalid_scope", "The scope is mandatory", $state);
+			return array_merge($request, array("error" => "invalid_scope", "error_description" => "The requested scope is invalid or malformed"));
 		}
 
-		// TODO: check for per-client scope restrictions
+		// check the scope is supported
+		if ($scope and !$this->checkScope($scope)) {
+			return array_merge($request, array("error" => "invalid_scope", "error_description" => "The requested scope is invalid or unknown"));
+		}
+		// check if requested scope is not set, there is no predefined default scope and thus MUST be set
+		if (!$scope and empty($this->config["default_scope"])) {
+			return array_merge($request, array("error" => "invalid_scope", "error_description" => "The scope is mandatory"));
+		}
 
 		// if in the request scope was not set we can fail back to the default scope
 		if (!$scope) {
 			$scope = $this->config["default_scope"];
 		}
 
-		return array(
-			"response_type" 	=> $response_type,
-			"client_id" 		=> $client_id,
-			"redirect_uri"		=> $redirect_uri,
-			"state"				=> $state,
-			"scope"				=> $scope
-		);
+		$request["scope"] = $scope;
+
+		return $request;
 	}
 
 	/**
@@ -157,53 +227,42 @@ class OAuth2
 	 * 
 	 * @param mixed $user_id
 	 */
-	public function grantAccess($user_id)
+	protected function createGrantAccess($user_id)
 	{
-		$request = $this->authRequest();
+		$result = $this->authRequest();
 
 		// auth code
-		if ($request["response_type"] == "code") {
-			$code = $this->genCode();
+		if ($result["response_type"] == "code") {
+			$result["code"] = $this->genCode();
 			// save the auth code in some storage (DB)
 			$expires_in = $this->config["code_expires_in"];
-			$this->saveAuthCode($user_id, $request["client_id"], $code, strtotime("+$expires_in seconds"), $request["redirect_uri"]);
-
-			$params = array(
-				"code" 	=> $code, 
-				"state" => $request["state"]
-			);
-			$location = $this->rebuildUri($request["redirect_uri"], $params, array());
-			$this->redirect($location);
+			$this->saveAuthCode($user_id, $result["client_id"], $result["code"], strtotime("+$expires_in seconds"), $result["redirect_uri"]);
 		}
 		
 		// implicit grant type
 		// @see http://tools.ietf.org/html/rfc6749#section-4.2
-		if ($request["response_type"] == "token") {
-			$access_token = $this->genCode();
-			$expires_in = $this->config["token_expires_in"];
+		if ($result["response_type"] == "token") {
+			$result["access_token"] = $this->genCode();
+			$result["token_type"] = "bearer";
+			$result["expires_in"] = $this->config["token_expires_in"];
 
 			// save token in some storage (DB)
-			$this->saveToken($user_id, $request["client_id"], $access_token, strtotime("+$expires_in seconds"));
-
-			$params = array(
-				"access_token"	=> $access_token,
-				"token_type"	=> "bearer",
-				"expires_in" 	=> $expires_in,
-				"scope"			=> $request["scope"],
-				"state"			=> $request["state"],
-			);
-			$location = $this->rebuildUri($request["redirect_uri"], array(), $params);
-			$this->redirect($location);
+			$this->saveToken($user_id, $result["client_id"], $result["access_token"], strtotime("+{$result['expires_in']} seconds"));
 		}
+
+		return $result;
 	}
 
 	/**
 	 * User denies access
 	 */
-	public function denyAccess()
+	public function createDenyAccess()
 	{
-		$request = $this->authRequest();
-		$this->redirectWithError($request["response_type"], $request["redirect_uri"], "access_denied", "The user denied request", $request["state"]);
+		$result = $this->authRequest();
+		$result["error"] = "access_denied";
+		$result["error_description"] = "The user denied request";
+
+		return $result;
 	}
 
 	/**
@@ -299,7 +358,6 @@ class OAuth2
 	/**
 	 * Checks received client_id parameter
 	 *
-	 * @throws OAuth2Exception if client_id parameter is invalid or the client is unregistered
 	 * @param string $client_id
 	 * @return array - Client's registration information
 	 */
@@ -309,16 +367,16 @@ class OAuth2
 		// the RFC does not exclude the use of unregistered clients, but we do
 		// @see http://tools.ietf.org/html/rfc6749#section-2.4
 		if (!$client_id) {
-			throw new OAuth2Exception("invalid_request", "Required client ID parameter is missing");
+			return array("error" => "invalid_request", "error_description" => "Required client ID parameter is missing");
 		}
 		// verify client_id with some regular expression
  		if (!preg_match($this->clientIdRegEx, $client_id)) {
-			throw new OAuth2Exception("invalid_request", "Client ID is malformed");
+			return array("error" => "invalid_request", "error_description" => "Client ID is malformed");
 		}
 		// get client_id details from some storage (DB)
 		$client = $this->getClient($client_id);
 		if (!$client) {
-			throw new OAuth2Exception("unauthorized_client", "Client does not exist");
+			return array("error" => "unauthorized_client", "error_description" => "Client does not exist");
 		}
 
 		return $client;
@@ -349,23 +407,6 @@ class OAuth2
 		header("HTTP/1.1 $code");
 		header("Location: $location");
 		exit;
-	}
-
-	/**
-	 * TODO: this needs rewrite
-	 */
-	protected function redirectWithError($response_type, $redirect_uri, $error, $error_description, $state)
-	{
-		$params = array("error" => $error);
-		if ($error_description) $params["error_description"] = $error_description;
-		if ($state) $params["state"] = $state;
-		if ($response_type == "token") {
-			$location = $this->rebuildUri($redirect_uri, array(), $params);
-		}
-		else {
-			$location = $this->rebuildUri($redirect_uri, $params, array());
-		}
-		$this->redirect($location);
 	}
 
 	/**

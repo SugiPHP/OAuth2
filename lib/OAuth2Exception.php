@@ -8,8 +8,8 @@
 
 class OAuth2Exception extends \Exception
 {
-	protected $error;
-	protected $error_description;
+	public $error;
+	public $error_description;
 
 	public function __construct($error, $error_description)
 	{

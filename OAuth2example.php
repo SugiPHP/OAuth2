@@ -6,17 +6,31 @@ require "lib/IOAuth2Codes.php";
 
 class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 {
+	
 	public function __construct()
 	{
 		parent::__construct(array(
 			"scopes" 			=> "basic extended",
 			"default_scope"		=> "basic",
 			"code_size"			=> 32,
-			"token_expires_in" 	=> 15*60,
-			"code_expires_in"	=> 30,
+			"token_expires_in" 	=> 900, // 15 minutes
+			"code_expires_in"	=> 180, // much more than needed. Only for testing purposes
 		));
 	}
 
+
+	protected function redirect($location, $code = "302 Found")
+	{
+		//header("HTTP/1.1 $code");
+		//header("Location: $location");
+		echo $location;
+		exit;
+	}
+
+
+	/**
+	 * Implements IOAuth2Tokens::getClient()
+	 */
 	function getClient($client_id)
 	{
 		if ($client_id == "test") return array(
@@ -32,16 +46,25 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 		return null;
 	}
 
+	/**
+	 * Implements IOAuth2Tokens::saveToken()
+	 */
 	function saveToken($user_id, $client_id, $token, $expires)
 	{
 		// TODO: save it in the DB
 	}
 
+	/**
+	 * Implements IOAuth2Tokens::saveAuthCode()
+	 */
 	function saveAuthCode($user_id, $client_id, $code, $expires, $redirect_uri)
 	{
 		// TODO: save it in the DB
 	}
 
+	/**
+	 * Implements IOAuth2Tokens::getAuthCode()
+	 */
 	function getAuthCode($code)
 	{
 		return array(
@@ -52,6 +75,11 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes
 		);
 	}
 
+
+
+	/*
+	 * Some customizations bellow
+	 */
 
 	/**
 	 * Checks the user already had granted access for this client with given scope.

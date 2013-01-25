@@ -23,24 +23,18 @@ if (!$user_id) {
 
 
 $auth = new OAuth2example();
-try {
-	// check client request
-	$requestParams = $auth->authRequest();
-} catch (OAuth2Exception $e) {
-	echo $e;
-	exit;
-}
+$request = $auth->authRequest();
 
 // Check if the user already (probably some time ago) has granted access for the scope and for the client.
 // If so, we can skip next step and automatically grant access
-if ($auth->getAccessGranted($user_id, $requestParams["client_id"], $requestParams["scope"])) {
+if ($auth->getAccessGranted($user_id, $request["client_id"], $request["scope"])) {
 	$auth->grantAccess($user_id);
 }
 
 if ($_POST) {
 	if ($_POST["submit"] == "Grant access") {
 		// We can store (in the DB) the grant access for further use.
-		$auth->saveAccessGrant($user_id, $requestParams["client_id"], $requestParams["scope"]);
+		$auth->saveAccessGrant($user_id, $request["client_id"], $request["scope"]);
 		$auth->grantAccess($user_id);
 	}
 	else {
@@ -56,10 +50,10 @@ if ($_POST) {
 </head>
 <body>
 	<form method="post" action="">
-		<h2><?= $requestParams["client_id"];?></h2>
-		<p><?= $requestParams["client_id"];?> application needs your:
+		<h2><?= $request["client_id"];?></h2>
+		<p><?= $request["client_id"];?> application needs your:
 			<ul>
-			<?php foreach(explode(" ", $requestParams["scope"]) as $scope): ?>
+			<?php foreach(explode(" ", $request["scope"]) as $scope): ?>
 				<li><?= $scope; ?> data</li>
 			<?php endforeach; ?>
 			</ul>
