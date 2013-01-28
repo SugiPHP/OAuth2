@@ -36,5 +36,5 @@ interface IOauth2Codes extends IOAuth2Tokens
 	function getAuthCode($code);
 
 	
-	function checkClientCredentials($client_id, $client_password);
+	function checkClientCredentials($client_id, $client_secret);
 }

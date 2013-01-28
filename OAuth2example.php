@@ -11,8 +11,9 @@ require __DIR__ . "/lib/OAuth2.php";
 require __DIR__ . "/lib/IOAuth2Tokens.php";
 require __DIR__ . "/lib/IOAuth2Codes.php";
 require __DIR__ . "/lib/IOAuth2Implicit.php";
+require __DIR__ . "/lib/IOauth2DynamicURI.php";
 
-class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit
+class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit, IOauth2DynamicURI
 {
 	
 	public function __construct()
@@ -76,11 +77,21 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	/**
 	 * Implements IOAuth2Codes::checkClientCredentials()
 	 */
-	function checkClientCredentials($client_id, $client_password)
+	function checkClientCredentials($client_id, $client_secret)
 	{
-		return true;
+		if ($client_id == 'test' and $client_secret == 'tset') return true;
+		return false;
 	}
 
+	/**
+	 * Implements IOAuthDynamicURI::checkClientURI()
+	 */
+	function checkClientURI($redirect_uri, $client)
+	{
+		$reg_uri = $client["redirect_uri"];
+		if (!$redirect_uri) return $reg_uri;
+		return (strcasecmp(substr($redirect_uri, 0, strlen($reg_uri)), $reg_uri) === 0) ? $redirect_uri : false;
+	}
 
 	/*
 	 * Some customizations bellow

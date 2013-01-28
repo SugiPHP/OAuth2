@@ -133,7 +133,7 @@ class OAuth2
 	 * @param array $params - GET or POST request
 	 * @return array - An associative array containing validated parameters passed from the client
 	 */
-	public function authRequest($params = null)
+	public function authRequest(array $params = null)
 	{
 		if (is_null($params)) $params = $_GET;
 
@@ -143,10 +143,6 @@ class OAuth2
 		$scope = empty($params["scope"]) ? NULL : $params["scope"];
 		$state = empty($params["state"]) ? NULL : $params["state"];
 
-		// Filtered request
-		$request = array();
-		// nothing to check for state
-		$request["state"] = $state;
 		$this->state = $state;
 
 		if (!$response_type) {
@@ -166,22 +162,13 @@ class OAuth2
 		if ($response_type === "token" AND !$this instanceof IOAuth2Implicit) {
 			throw new OAuth2Exception("unsupported_response_type", "Implicit grant type is not supported");
 		}
-
-		$request["response_type"] = $response_type;
+		
 		$this->response_type = $response_type;
 
 		// Checks client and receives information about the client. If something is wrong the OAuth2Exception will be thrown
 		$client = $this->checkClient($client_id);
 
-		$request["client_id"] = $client_id;
 		$this->client_id = $client_id;
-
-		// TODO: add support for Dynamic Configurations, like registering only part of the redirect_uri, multiple redirectrions URIs
-		// or if no redirection URI has beed registered
-		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.3
-		if (!$redirect_uri AND (!$client["redirect_uri"] OR is_array($client["redirect_uri"]) /* OR strpos($client["redirect_uri"] , "*") >= 0 */)) {
-			throw new OAuth2Exception("access_denied", "Dynamic configurations for redirection endpoints require redirect URI parameter");
-		}
 
 		// public clients
 		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
@@ -193,9 +180,18 @@ class OAuth2
 		if ($client["client_type"] == "confidential" AND $response_type == "token" AND !$redirect_uri) {
 			throw new OAuth2Exception("access_denied", "Public clients MUST register their redirection endpoints");
 		}
-
+		// If the client can register multiple redirection URI's, or to register only part of the URI, 
+		// or not to register any redirection URI as specified in the standard
+		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.3
+		// you have to implement IOAuth2DynamicURI and check the client redirect URI based on your implementation
+		if ($this instanceof IOauth2DynamicURI) {
+			if (!$redirect_uri = $this->checkClientURI($redirect_uri, $client)) {
+				throw new OAuth2Exception("access_denied", "Dynamic configuration for redirect URI failed");
+			}
+		}
+		// default check if you did not implement IOAuth2DynamicURI is to check full redirect_uri
 		// check redirect_uri is the same as stored in the DB for the client
-		if ($redirect_uri and $client["redirect_uri"] and $redirect_uri != $client["redirect_uri"]) {
+		elseif ($redirect_uri and $client["redirect_uri"] and $redirect_uri != $client["redirect_uri"]) {
 			throw new OAuth2Exception("access_denied", "Redirect URI does not match");
 		}
 		
@@ -204,7 +200,6 @@ class OAuth2
 			$redirect_uri = $client["redirect_uri"];
 		}
 
-		$request["redirect_uri"] = $redirect_uri;
 		$this->redirect_uri = $redirect_uri;
 
 		// After this point we should navigate (redirect) the end-user to the redirect_uri on errors
@@ -228,10 +223,15 @@ class OAuth2
 			$scope = $this->config["default_scope"];
 		}
 
-		$request["scope"] = $scope;
 		$this->scope = $scope;
 
-		return $request;
+		return array(
+			"state" 		=> $state,	
+			"response_type" => $response_type,
+			"client_id"		=> $client_id,
+			"redirect_uri"	=> $redirect_uri,
+			"scope"			=> $scope,
+		);
 	}
 
 	/**
@@ -298,15 +298,21 @@ class OAuth2
 	 * @throws OAuth2Exception
 	 * @return array - An associative array containing validated parameters passed from the client
 	 */
-	public function tokenRequest($params = null)
+	public function tokenRequest(array $params = null)
 	{
 		// this always MUST be $_POST, but for testing purposes we allow anything
 		if (is_null($params)) $params = $_POST;
 
 		$grant_type = empty($params["grant_type"]) ? NULL : $params["grant_type"];
-		$client_id = empty($params["client_id"]) ? NULL : $params["client_id"];
 		$code = empty($params["code"]) ? NULL : $params["code"];
 		$redirect_uri = empty($params["redirect_uri"]) ? NULL : $params["redirect_uri"];
+
+		// $client_id and client_secret are submitted via HTTP Basic authentication headers
+		// The authorization server MUST support HTTP Basic authentication scheme for 
+		// authenticating clients that were issued a client password. More at:
+		// @see http://tools.ietf.org/html/rfc6749#section-4.1.3
+		$client_id = empty($_SERVER['PHP_AUTH_USER']) ? NULL : $_SERVER['PHP_AUTH_USER'];
+		$client_secret = empty($_SERVER['PHP_AUTH_PW']) ? NULL : $_SERVER['PHP_AUTH_PW'];
 
 		if (!$grant_type) {
 			throw new OAuth2Exception("invalid_request", "Required grant type parameter is missing");
@@ -318,7 +324,11 @@ class OAuth2
 		// Checks client and receives information about the client. In case of error throws OAuth2Exception.
 		$client = $this->checkClient($client_id);
 
-		// TODO: check client credentials
+		// check client credentials
+		if ($this instanceof IOauth2Codes and !$this->checkClientCredentials($client_id, $client_secret)) {
+			throw new OAuth2Exception("unauthorized_client", "Client credentials are invalid");
+		}
+		
 		// Check the code
 		if (!$code) {
 			throw new OAuth2Exception("invalid_request", "Required code parameter is missing");
@@ -338,7 +348,7 @@ class OAuth2
 		if ($codeData["expires"] < time()) {
 			throw new OAuth2Exception("invalid_grant", "Code expired");
 		}
-		if ($codeData["redirect_uri"] and ($codaData["redirect_uri"] != $redirect_uri)) {
+		if ($codeData["redirect_uri"] and ($codeData["redirect_uri"] != $redirect_uri)) {
 			throw new OAuth2Exception("invalid_grant", "Redirect URI mismatch");
 		}
 
@@ -372,6 +382,7 @@ class OAuth2
 		header("Cache-Control: no-store");
 		header("Pragma: no-cache");
 		echo json_encode($params);
+		exit;
 	}
 
 	/**
