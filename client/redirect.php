@@ -12,9 +12,19 @@
 		echo "<h1>$error</h1>";
 		if ($error_description) {
 			echo "<p>$error_description</p>";
+			echo "<a href=\"/index.php\">Go back</a>";
 		}
 		exit;
 	}
+
+	if ($state != $_SESSION["state"]) {
+		echo "<h1>Error in session data</h1>";
+		echo "<a href=\"/index.php\">Go back</a>";
+		exit;
+	}
+
+	$redirect_uri = $_SESSION["redirect_uri"];
+
 ?>
 <!doctype html>
 <html>
@@ -23,9 +33,10 @@
 	<title>Client endpoint</title>
 </head>
 <body>
-	<form name="" action="http://test:tset@auth.loc/token.php" method="post">
+	<form name="" action="http://client1:secret1@auth.loc/token.php" method="post">
 		<input type="hidden" name="grant_type" value="authorization_code" />
 		<input type="hidden" name="code" value="<?= $code;?>" />
+		<input type="hidden" name="redirect_uri" value="<?= $redirect_uri; ?>" />
 		<input type="submit" value="go" />
 	</form>
 </body>

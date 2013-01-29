@@ -10,10 +10,15 @@
 
 // TODO: this is better to be moved in OAuth2 or ?
 if (!isset($_SERVER["PHP_AUTH_USER"])) {
-    header('WWW-Authenticate: Basic realm="OAuth2 Server"');
-    header("HTTP/1.0 401 Unauthorized");
-    echo json_encode(array("error" => "unauthorized_client", "error_description" => "The server accepts only HTTP Basic Authentication scheme"));
-    exit;
+	header('WWW-Authenticate: Basic realm="OAuth2 Server"');
+	header("HTTP/1.0 401 Unauthorized");
+	echo json_encode(array("error" => "unauthorized_client", "error_description" => "The server accepts only HTTP Basic Authentication scheme"));
+	exit;
+}
+if (!$_POST) {
+	header("HTTP/1.0 405 Method Not Allowed");
+	echo json_encode(array("error" => "invalid_request", "error_description" => "The page accepts only HTTP POST requests"));
+	exit;
 }
 
 require "OAuth2example.php";

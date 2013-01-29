@@ -1,11 +1,13 @@
 <?php
 /**
  * OAuth2.0 Authorization Server example
- * This is (and will not be) production ready example.
+ * This is NOT a production ready.
  * Use it as a reference only!
  * 
  * @package OAuth2
  */
+
+error_reporting(-1);
 
 require __DIR__ . "/lib/OAuth2.php";
 require __DIR__ . "/lib/IOAuth2Tokens.php";
@@ -15,16 +17,25 @@ require __DIR__ . "/lib/IOauth2DynamicURI.php";
 
 class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit, IOauth2DynamicURI
 {
-	
+	/**
+	 * PDO handler
+	 */
+	public $db;
+
 	public function __construct()
 	{
 		parent::__construct(array(
 			"scopes" 			=> "basic extended",
 			"default_scope"		=> "basic",
 			"code_size"			=> 32,
-			"code_expires_in"	=> 180, // much more than needed. Only for testing purposes
+			"code_expires_in"	=> 120, // much more than needed. Only for testing purposes
 			"token_expires_in" 	=> 900, // 15 minutes
 		));
+
+		// Establish a database connection
+		$this->db = new PDO('mysql:host=localhost;dbname=test', "test", "test");
+		// throw exceptions on database errors
+		$this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	}
 
 	/**
@@ -32,33 +43,54 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	 */
 	function getClient($client_id)
 	{
-		if ($client_id == "test") return array(
-			"redirect_uri" 	=> "http://client.auth.loc/redirect.php",
-			"client_type" 	=> "confidential" // "public" or "confidential"
-		);
-
-		if ($client_id == "pubtest") return array(
-			"redirect_uri" 	=> "http://client.auth.loc/redirect.php",
-			"client_type" 	=> "public"
-		);
-
-		return null;
+		$stmnt = $this->db->prepare("SELECT * FROM oauth_clients WHERE client_id = :client_id");
+		$stmnt->bindParam(":client_id", $client_id);
+		$stmnt->execute();
+		$client = $stmnt->fetch();
+		
+		return ($client) ? $client : null;
 	}
 
 	/**
 	 * Implements IOAuth2Tokens::saveToken()
 	 */
-	function saveToken($user_id, $client_id, $token, $expires)
+	function saveToken($user_id, $client_id, $token, $expires, $scope, $code = null)
 	{
-		// TODO: save it in the DB
+		$stmnt = $this->db->prepare("INSERT INTO oauth_tokens (token, client_id, user_id, expires, scope, code) "
+			." VALUES (:token, :client_id, :user_id, :expires, :scope, :code)");
+		$stmnt->bindParam(":token", $token);
+		$stmnt->bindParam(":client_id", $client_id);
+		$stmnt->bindParam(":user_id", $user_id);
+		$stmnt->bindParam(":expires", $expires);
+		$stmnt->bindParam(":scope", $scope);
+		$stmnt->bindParam(":code", $code);
+		$stmnt->execute();
+	}
+
+	/**
+	 * Implements IOAuth2Tokens::revokeToken()
+	 */
+	function revokeToken($token)
+	{
+		$stmnt = $this->db->prepare("UPDATE oauth_tokens SET revoked = 1 WHERE token = :token");
+		$stmnt->bindParam(":token", $token);
+		$stmnt->execute();
 	}
 
 	/**
 	 * Implements IOAuth2Codes::saveAuthCode()
 	 */
-	function saveAuthCode($user_id, $client_id, $code, $expires, $redirect_uri)
+	function saveAuthCode($user_id, $client_id, $code, $expires, $redirect_uri, $scope)
 	{
-		// TODO: save it in the DB
+		$stmnt = $this->db->prepare("INSERT INTO oauth_codes (code, client_id, user_id, expires, scope, redirect_uri) "
+			." VALUES (:code, :client_id, :user_id, :expires, :scope, :redirect_uri)");
+		$stmnt->bindParam(":code", $code);
+		$stmnt->bindParam(":client_id", $client_id);
+		$stmnt->bindParam(":user_id", $user_id);
+		$stmnt->bindParam(":expires", $expires);
+		$stmnt->bindParam(":scope", $scope);
+		$stmnt->bindParam(":redirect_uri", $redirect_uri);
+		$stmnt->execute();
 	}
 
 	/**
@@ -66,12 +98,12 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	 */
 	function getAuthCode($code)
 	{
-		return array(
-			"client_id" 	=> "test",
-			"user_id"		=> 1,
-			"expires" 		=> time() + 15,
-			"redirect_uri" 	=> ""
-		);
+		$stmnt = $this->db->prepare("SELECT * FROM oauth_codes WHERE code = :code");
+		$stmnt->bindParam(":code", $code);
+		$stmnt->execute();
+		$oauth_code = $stmnt->fetch();
+
+		return ($oauth_code) ? $oauth_code : null;
 	}
 
 	/**
@@ -79,8 +111,21 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	 */
 	function checkClientCredentials($client_id, $client_secret)
 	{
-		if ($client_id == 'test' and $client_secret == 'tset') return true;
-		return false;
+		$client = $this->getClient($client_id);
+		return $this->checkSecret($client["client_secret"], $client_secret);
+	}
+
+	/**
+	 * Implements IOAuth2Codes::getTokenWithCode()
+	 */
+	function getTokenWithCode($code)
+	{
+		$stmnt = $this->db->prepare("SELECT token FROM oauth_tokens WHERE code = :code");
+		$stmnt->bindParam(":code", $code);
+		$stmnt->execute();
+		$oauth_tokens = $stmnt->fetch();
+
+		return empty($oauth_tokens["token"]) ? null : $oauth_tokens["token"];
 	}
 
 	/**
@@ -94,7 +139,7 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/*
-	 * Some customizations bellow
+	 * The following methods are not part of the specification
 	 */
 
 	/**
@@ -109,7 +154,7 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	 */
 	public function getAccessGranted($user_id, $client_id, $scope)
 	{
-		return ($user_id == 1 and $client_id == "test" and $scope == "basic");
+		// TODO:
 	}
 
 	/**
@@ -123,12 +168,12 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	 */
 	public function saveAccessGrant($user_id, $client_id, $scope)
 	{
-		// TODO: save access grant
+		// TODO:
 	}
 
 
 	/**
-	 * This is not part of the OAuth2.
+	 * This method is not part of OAuth2 specification.
 	 * Only for reference what info is needed for client registrations.
 	 * 
 	 * @param string $client_id - REQUIRED
@@ -143,16 +188,33 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 		if (!preg_match($this->clientIdRegEx, $client_id)) {
 			throw new OAuth2Exception("client_id", "Client ID is invalid");
 		}
-		// TODO: check client_id exists
+		// Check the client_id exists. Reusing existing code
+		if ($this->getClient($client_id)) {
+			throw new OAuth2Exception("client_id", "Client ID exists");
+		}
 
 		if (!preg_match($this->clientTypeRegEx, $client_type)) {
 			throw new OAuth2Exception("client_type", "Client type is invalid");
 		}
 
+		if (!$redirect_uri) {
+			throw new OAuth2Exception("redirect_uri", "Required redirect URI field is missing");	
+		}
 		// TODO: check redirect_uri
 		
 		if (!$client_secret and $client_type == "confidential") {
 			throw new OAuth2Exception("client_secret", "Client secret must be provided for confidential clients");
 		}
+
+		// hash the secret
+		$secret_hash = $this->cryptSecret($client_secret);
+		
+		$stmnt = $this->db->prepare("INSERT INTO oauth_clients (client_id, client_type, redirect_uri, client_secret) "
+			." VALUES (:client_id, :client_type, :redirect_uri, :client_secret)");
+		$stmnt->bindParam(":client_id", $client_id);
+		$stmnt->bindParam(":client_type", $client_type);
+		$stmnt->bindParam(":redirect_uri", $redirect_uri);
+		$stmnt->bindParam(":client_secret", $secret_hash);
+		$stmnt->execute();
 	}
 }

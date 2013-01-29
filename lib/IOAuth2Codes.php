@@ -19,8 +19,11 @@ interface IOauth2Codes extends IOAuth2Tokens
 	 * @param $user_id - the value passed in OAuth::grantAccess() method
 	 * @param string $client_id
 	 * @param string $code
+	 * @param integer $expires
+	 * @param string $redirect_uri
+	 * @param string $scope
 	 */
-	function saveAuthCode($user_id, $client_id, $code, $expires, $redirect_uri);
+	function saveAuthCode($user_id, $client_id, $code, $expires, $redirect_uri, $scope);
 
 	/**
 	 * Reads authorization code data from the storage.
@@ -32,9 +35,24 @@ interface IOauth2Codes extends IOAuth2Tokens
 	 *  - client_id
 	 *  - expires
 	 *  - redirect_uri
+	 *  - scope
 	 */
 	function getAuthCode($code);
 
-	
+	/**
+	 * Checks sended client credentials are identical to those saved in the DB
+	 * 
+	 * @param string $client_id
+	 * @param string $client_secret
+	 * @return boolean
+	 */
 	function checkClientCredentials($client_id, $client_secret);
+
+	/**
+	 * Fetches a token issued in exchange of the code
+	 * 
+	 * @param string $code
+	 * @return string|NULL - token issued or NULL if no token is issued based on the code
+	 */
+	function getTokenWithCode($code);
 }

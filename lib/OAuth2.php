@@ -15,7 +15,7 @@ class OAuth2
 	 * @see http://tools.ietf.org/html/rfc6749#section-2.2
 	 * @var string
 	 */
-	protected $clientIdRegEx = '#^[a-z_0-9]{2,20}$#';
+	protected $clientIdRegEx = '#^[a-z_0-9]{2,32}$#';
 
 	/**
 	 * Regular expression for client type
@@ -31,11 +31,16 @@ class OAuth2
 	protected $scopeRegEx = '#^[a-zA-Z_0-9]{2,16}(\s+[a-zA-Z_0-9]{2,16})*$#';
 
 	/**
+	 * Regular expression to check authorization code.
+	 * @var string
+	 */
+	protected $codeRegEx = '';
+
+	/**
 	 * Storage for configuration settings
 	 * @var array
 	 */
 	protected $config = array();
-
 
 	/**
 	 * Storage for filtered data that was requested or has been created by the OAuth2 class
@@ -80,6 +85,9 @@ class OAuth2
 		foreach ($config as $name => $value) {
 			$this->config[$name] = $value;
 		}
+
+		// regular expression for codes based on sha512 and the length of the codes
+		$this->codeRegEx = '#^[0-9a-f]{' . $this->config["code_size"] . '}$#';
 	}
 
 	/**
@@ -248,7 +256,7 @@ class OAuth2
 			$this->code = $this->genCode();
 			// save the auth code in some storage (DB)
 			$this->expires_in = $this->config["code_expires_in"];
-			$this->saveAuthCode($user_id, $this->client_id, $this->code, strtotime("+{$this->expires_in} seconds"), $this->redirect_uri);
+			$this->saveAuthCode($user_id, $this->client_id, $this->code, strtotime("+{$this->expires_in} seconds"), $this->redirect_uri, $this->scope);
 
 			$location = $this->rebuildUri($this->redirect_uri, array("code" => $this->code, "state" => $this->state), array());
 		}
@@ -261,7 +269,7 @@ class OAuth2
 			$this->expires_in = $this->config["token_expires_in"];
 
 			// save token in some storage (DB)
-			$this->saveToken($this->user_id, $this->client_id, $this->access_token, strtotime("+{$this->expires_in} seconds"));
+			$this->saveToken($this->user_id, $this->client_id, $this->access_token, strtotime("+{$this->expires_in} seconds"), $this->scope);
 
 			$location = $this->rebuildUri($this->redirect_uri, array(), array(
 				"access_token"	=> $this->access_token,
@@ -329,12 +337,14 @@ class OAuth2
 			throw new OAuth2Exception("unauthorized_client", "Client credentials are invalid");
 		}
 		
-		// Check the code
+		// Check for missing code
 		if (!$code) {
 			throw new OAuth2Exception("invalid_request", "Required code parameter is missing");
 		}
-
-		// TODO: Check code with RegEx
+		// Check the code with RegEx
+		if (!preg_match($this->codeRegEx, $code)) {
+			throw new OAuth2Exception("invalid_request", "Code parameter is invalid");	
+		}
 		
 		// retrieve stored data associated with the code
 		$codeData = $this->getAuthCode($code);
@@ -352,6 +362,20 @@ class OAuth2
 			throw new OAuth2Exception("invalid_grant", "Redirect URI mismatch");
 		}
 
+		// Check for invalidated authorization codes
+		// "If an authorization code is used more than once, the authorization server MUST deny the request"
+		// @see http://tools.ietf.org/html/rfc6749#section-4.1.2
+		if ($old_token = $this->getTokenWithCode($code)) {
+			// ".. and SHOULD revoke (when possible) all tokens previously issued based on that authorization code"
+			// @see http://tools.ietf.org/html/rfc6749#section-4.1.2
+			// it's possible!
+			$this->revokeToken($old_token);
+
+			// TODO: revoke refresh tokens based on this code if any
+			
+			throw new OAuth2Exception("invalid_grant", "Used authorization code");
+		}
+
 		// Now we have the authenticated user
 		$user_id = $codeData["user_id"];
 
@@ -359,20 +383,20 @@ class OAuth2
 		$expires_in = $this->config["token_expires_in"];
 
 		// save token in some storage (DB)
-		$this->saveToken($user_id, $client_id, $access_token, strtotime("+$expires_in seconds"));
+		$this->saveToken($user_id, $client_id, $access_token, strtotime("+$expires_in seconds"), $this->codeData["scope"], $code);
 
 		$params = array(
 			"access_token"	=> $access_token,
 			"token_type"	=> "bearer",
 			"expires_in" 	=> $expires_in,
 		);
-
+		
 		// TODO 
 		if ($this instanceof IOAuth2RefreshTokens) {
 			$refresh_token = $this->genCode();
 			$refresh_token_expires_in = $this->config["refresh_token_expires_in"];
 			// ???
-			$this->saveRefreshToken($user_id, $client_id, $refresh_token, "+$refresh_token_expires_in seconds");
+			$this->saveRefreshToken($user_id, $client_id, $refresh_token, strtotime("+$refresh_token_expires_in seconds"));
 
 			$params["refresh_token"] = $refresh_token;
 		}
@@ -499,5 +523,30 @@ class OAuth2
 		// SHA-512 produces 128 chars - we can extract only some
 		$len = $this->config["code_size"];
 		return substr(hash('sha512', $code), mt_rand(0, 128 - $len), $len);
+	}
+
+	/**
+	 * Generates a hash
+	 * This is not a part of the OAuth.
+	 *
+	 * @param string $secret
+	 * @return string
+	 */
+	public static function cryptSecret($secret)
+	{
+		return crypt($secret, '$2a$10$' .  substr(sha1(mt_rand()), 0, 22));
+	}
+
+	/**
+	 * Compares a secret against a hash
+	 * This is not a part of the OAuth.
+	 *
+	 * @param string $hash - secret hash made with cryptSecret() method
+	 * @param string $secret - secret
+	 * @return boolean
+	 */
+	public static function checkSecret($hash, $secret)
+	{
+		return ($hash === crypt($secret, substr($hash, 0, 29)));
 	}
 }

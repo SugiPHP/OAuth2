@@ -29,6 +29,16 @@ interface IOAuth2Tokens
 	 * @param string $client_id
 	 * @param string $token
 	 * @param integer $expires - timestamp when the token MUST be invalidated
+	 * @param string $scope - the scope granted by the resource owner (user)
+	 * @param string $code - OPTIONAL the authorization code used for issuing this token
 	 */
-	function saveToken($user_id, $client_id, $token, $expires);
+	function saveToken($user_id, $client_id, $token, $expires, $scope, $code = null);
+
+	/**
+	 * Marks the token as invalid.
+	 * You MUST NOT delete a token. Set some flag instead
+	 * 
+	 * @param string $token
+	 */
+	function revokeToken($token);
 }
