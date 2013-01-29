@@ -256,7 +256,7 @@ class OAuth2
 			$this->code = $this->genCode();
 			// save the auth code in some storage (DB)
 			$this->expires_in = $this->config["code_expires_in"];
-			$this->saveAuthCode($user_id, $this->client_id, $this->code, strtotime("+{$this->expires_in} seconds"), $this->redirect_uri, $this->scope);
+			$this->saveAuthCode($this->code, $this->client_id, $user_id, strtotime("+{$this->expires_in} seconds"), $this->redirect_uri, $this->scope);
 
 			$location = $this->rebuildUri($this->redirect_uri, array("code" => $this->code, "state" => $this->state), array());
 		}
@@ -269,7 +269,7 @@ class OAuth2
 			$this->expires_in = $this->config["token_expires_in"];
 
 			// save token in some storage (DB)
-			$this->saveToken($this->user_id, $this->client_id, $this->access_token, strtotime("+{$this->expires_in} seconds"), $this->scope);
+			$this->saveToken($this->access_token, $this->client_id, $user_id, strtotime("+{$this->expires_in} seconds"), $this->scope);
 
 			$location = $this->rebuildUri($this->redirect_uri, array(), array(
 				"access_token"	=> $this->access_token,
@@ -371,7 +371,10 @@ class OAuth2
 			// it's possible!
 			$this->revokeToken($old_token);
 
-			// TODO: revoke refresh tokens based on this code if any
+			// revoke all refresh tokens based on this code if any
+			if ($this instanceof IOAuth2RefreshTokens) {
+				$this->revokeRefreshTokensWithCode($code);
+			}
 			
 			throw new OAuth2Exception("invalid_grant", "Used authorization code");
 		}
@@ -383,7 +386,7 @@ class OAuth2
 		$expires_in = $this->config["token_expires_in"];
 
 		// save token in some storage (DB)
-		$this->saveToken($user_id, $client_id, $access_token, strtotime("+$expires_in seconds"), $this->codeData["scope"], $code);
+		$this->saveToken($access_token, $client_id, $user_id, strtotime("+$expires_in seconds"), $codeData["scope"], $code);
 
 		$params = array(
 			"access_token"	=> $access_token,
@@ -391,12 +394,12 @@ class OAuth2
 			"expires_in" 	=> $expires_in,
 		);
 		
-		// TODO 
 		if ($this instanceof IOAuth2RefreshTokens) {
 			$refresh_token = $this->genCode();
 			$refresh_token_expires_in = $this->config["refresh_token_expires_in"];
-			// ???
-			$this->saveRefreshToken($user_id, $client_id, $refresh_token, strtotime("+$refresh_token_expires_in seconds"));
+
+			// save refresh token
+			$this->saveRefreshToken($refresh_token, $client_id, $user_id, strtotime("+$refresh_token_expires_in seconds"), $codeData["scope"], $code);
 
 			$params["refresh_token"] = $refresh_token;
 		}

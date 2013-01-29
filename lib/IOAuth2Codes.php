@@ -16,14 +16,14 @@ interface IOauth2Codes extends IOAuth2Tokens
 	/**
 	 * Saves authorization request code. Based on this code the client will ask for access token.
 	 * 
-	 * @param $user_id - the value passed in OAuth::grantAccess() method
-	 * @param string $client_id
 	 * @param string $code
+	 * @param string $client_id
+	 * @param mixed $user_id - the value passed in OAuth::grantAccess() method
 	 * @param integer $expires
 	 * @param string $redirect_uri
 	 * @param string $scope
 	 */
-	function saveAuthCode($user_id, $client_id, $code, $expires, $redirect_uri, $scope);
+	function saveAuthCode($code, $client_id, $user_id, $expires, $redirect_uri, $scope);
 
 	/**
 	 * Reads authorization code data from the storage.

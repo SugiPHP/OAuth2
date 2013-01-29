@@ -25,14 +25,14 @@ interface IOAuth2Tokens
 	/**
 	 * Saves access token issued by the server.
 	 * 
-	 * @param $user_id - the value passed in OAuth2::grantAccess() method
-	 * @param string $client_id
 	 * @param string $token
+	 * @param string $client_id
+	 * @param mixed $user_id - the value passed in OAuth2::grantAccess() method
 	 * @param integer $expires - timestamp when the token MUST be invalidated
 	 * @param string $scope - the scope granted by the resource owner (user)
 	 * @param string $code - OPTIONAL the authorization code used for issuing this token
 	 */
-	function saveToken($user_id, $client_id, $token, $expires, $scope, $code = null);
+	function saveToken($token, $client_id, $user_id, $expires, $scope, $code = null);
 
 	/**
 	 * Marks the token as invalid.

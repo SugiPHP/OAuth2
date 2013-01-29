@@ -13,9 +13,10 @@ require __DIR__ . "/lib/OAuth2.php";
 require __DIR__ . "/lib/IOAuth2Tokens.php";
 require __DIR__ . "/lib/IOAuth2Codes.php";
 require __DIR__ . "/lib/IOAuth2Implicit.php";
-require __DIR__ . "/lib/IOauth2DynamicURI.php";
+require __DIR__ . "/lib/IOAuth2DynamicURI.php";
+require __DIR__ . "/lib/IOAuth2RefreshTokens.php";
 
-class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit, IOauth2DynamicURI
+class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit, IOauth2DynamicURI, IOAuth2RefreshTokens
 {
 	/**
 	 * PDO handler
@@ -54,7 +55,7 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	/**
 	 * Implements IOAuth2Tokens::saveToken()
 	 */
-	function saveToken($user_id, $client_id, $token, $expires, $scope, $code = null)
+	function saveToken($token, $client_id, $user_id, $expires, $scope, $code = null)
 	{
 		$stmnt = $this->db->prepare("INSERT INTO oauth_tokens (token, client_id, user_id, expires, scope, code) "
 			." VALUES (:token, :client_id, :user_id, :expires, :scope, :code)");
@@ -80,7 +81,7 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	/**
 	 * Implements IOAuth2Codes::saveAuthCode()
 	 */
-	function saveAuthCode($user_id, $client_id, $code, $expires, $redirect_uri, $scope)
+	function saveAuthCode($code, $client_id, $user_id, $expires, $redirect_uri, $scope)
 	{
 		$stmnt = $this->db->prepare("INSERT INTO oauth_codes (code, client_id, user_id, expires, scope, redirect_uri) "
 			." VALUES (:code, :client_id, :user_id, :expires, :scope, :redirect_uri)");
@@ -137,6 +138,41 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 		if (!$redirect_uri) return $reg_uri;
 		return (strcasecmp(substr($redirect_uri, 0, strlen($reg_uri)), $reg_uri) === 0) ? $redirect_uri : false;
 	}
+
+	/**
+	 * Implements IOAuth2RefreshTokens::saveRefreshToken()
+	 */
+	function saveRefreshToken($token, $client_id, $user_id, $expires, $scope, $code = null)
+	{
+		$stmnt = $this->db->prepare("INSERT INTO oauth_refresh_tokens (token, client_id, user_id, expires, scope, code) "
+			." VALUES (:token, :client_id, :user_id, :expires, :scope, :code)");
+		$stmnt->bindParam(":token", $token);
+		$stmnt->bindParam(":client_id", $client_id);
+		$stmnt->bindParam(":user_id", $user_id);
+		$stmnt->bindParam(":expires", $expires);
+		$stmnt->bindParam(":scope", $scope);
+		$stmnt->bindParam(":code", $code);
+		$stmnt->execute();
+	}
+
+	/**
+	 * Implements IOAuth2RefreshTokens::getRefreshToken()
+	 */
+	function getRefreshToken($token)
+	{
+		// TODO:
+	}
+
+	/**
+	 * Implements IOAuth2RefreshTokens::revokeRefreshTokensWithCode()
+	 */
+	function revokeRefreshTokensWithCode($code)
+	{
+		$stmnt = $this->db->prepare("UPDATE oauth_refresh_tokens SET revoked = 1 WHERE code = :code");
+		$stmnt->bindParam(":code", $code);
+		$stmnt->execute();
+	}
+
 
 	/*
 	 * The following methods are not part of the specification

@@ -1,9 +1,9 @@
-*** PHP OAuth2.0 authorization server ***
+=== PHP OAuth2.0 authorization server ===
 based on RFC6749
 
 Will support four grant types:
  - implicit
- - authorization code (in process)
+ - authorization code
  - username/password pair (not ready)
  - client credentials (not ready)
 
