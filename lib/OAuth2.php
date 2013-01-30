@@ -5,7 +5,7 @@
  * @package OAuth2
  */
 
-require "OAuth2Exception.php";
+require_once __DIR__ . "/OAuth2Exception.php";
 
 class OAuth2
 {

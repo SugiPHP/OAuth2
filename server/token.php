@@ -8,6 +8,8 @@
  * @category example
  */
 
+require "OAuth2Example.php";
+
 // TODO: this is better to be moved in OAuth2 or ?
 if (!isset($_SERVER["PHP_AUTH_USER"])) {
 	header('WWW-Authenticate: Basic realm="OAuth2 Server"');
@@ -21,9 +23,7 @@ if (!$_POST) {
 	exit;
 }
 
-require "OAuth2example.php";
-
-$auth = new OAuth2example();
+$auth = new OAuth2Example();
 try {
 	// check client request
 	$requestParams = $auth->tokenRequest();

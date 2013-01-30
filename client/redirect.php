@@ -33,7 +33,7 @@
 	<title>Client endpoint</title>
 </head>
 <body>
-	<form name="" action="http://client1:secret1@auth.loc/token.php" method="post">
+	<form name="" action="http://client1:secret1@server.auth.loc/token.php" method="post">
 		<input type="hidden" name="grant_type" value="authorization_code" />
 		<input type="hidden" name="code" value="<?= $code;?>" />
 		<input type="hidden" name="redirect_uri" value="<?= $redirect_uri; ?>" />

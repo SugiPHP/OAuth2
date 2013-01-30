@@ -9,7 +9,7 @@
  * @category example
  */
 
-require "OAuth2example.php";
+require "OAuth2Example.php";
 
 // According to the RFC, this MUST be the first thing to do: 
 // Auth server MUST verify the identity of the user.
@@ -22,7 +22,7 @@ if (!$user_id) {
 }
 
 
-$auth = new OAuth2example();
+$auth = new OAuth2Example();
 try {
 	$request = $auth->authRequest($_GET);
 } catch (OAuth2Exception $e) {

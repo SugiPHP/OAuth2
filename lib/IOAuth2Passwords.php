@@ -5,6 +5,8 @@
  * @package OAuth2
  */
 
+require_once __DIR__ . "/IOAuth2Tokens.php";
+
 /**
  * Implement this interface if you want to support Resource Owner Password Credentials grant type
  */

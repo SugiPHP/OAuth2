@@ -9,15 +9,15 @@
 
 error_reporting(-1);
 
-require __DIR__ . "/lib/OAuth2.php";
-require __DIR__ . "/lib/IOAuth2Tokens.php";
-require __DIR__ . "/lib/IOAuth2Codes.php";
-require __DIR__ . "/lib/IOAuth2Implicit.php";
-require __DIR__ . "/lib/IOAuth2RefreshTokens.php";
-require __DIR__ . "/lib/IOAuth2DynamicURI.php";
-require __DIR__ . "/lib/IOAuth2Passwords.php";
+require __DIR__ . "/../lib/OAuth2.php";
+require __DIR__ . "/../lib/IOAuth2Tokens.php";
+require __DIR__ . "/../lib/IOAuth2Codes.php";
+require __DIR__ . "/../lib/IOAuth2Implicit.php";
+require __DIR__ . "/../lib/IOAuth2RefreshTokens.php";
+require __DIR__ . "/../lib/IOAuth2DynamicURI.php";
+require __DIR__ . "/../lib/IOAuth2Passwords.php";
 
-class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit, IOauth2DynamicURI, IOAuth2RefreshTokens, IOAuth2Passwords
+class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit, IOauth2DynamicURI, IOAuth2RefreshTokens, IOAuth2Passwords
 {
 	/**
 	 * PDO handler

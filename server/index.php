@@ -8,9 +8,9 @@
  * @package OAuth2
  * @category example
  */
-require "OAuth2example.php";
+require "OAuth2Example.php";
 
-$oauth = new OAuth2example;
+$oauth = new OAuth2Example;
 $error = "";
 
 if ($_POST) {

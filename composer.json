@@ -1,9 +1,6 @@
 {
     "name": "tzappa/auth",
     "description": "OAuth2.0 Server",
-    "require-dev": {
-        "phpunit/phpunit": "3.7.x-dev"
-    },
     "authors": [
         {
             "name": "Plamen Popov",
