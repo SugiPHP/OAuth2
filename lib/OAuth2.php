@@ -28,7 +28,7 @@ class OAuth2
 	 * Regular expression for grant_type
 	 * @var string
 	 */
-	protected $grantTypeRegEx = '#^(authorization_code|password|client_credentials)$#';
+	protected $grantTypeRegEx = '#^(authorization_code|password|client_credentials|refresh_token)$#';
 
 	/**
 	 * Regular expression to verify requested scope
@@ -308,24 +308,22 @@ class OAuth2
 			throw new OAuth2Exception("invalid_request", "Required grant type parameter is missing");
 		}
 		if (!preg_match($this->grantTypeRegEx, $grant_type)) {
-			throw new OAuth2Exception("invalid_request", "Grant type is invalid or unsupported");	
-		}
-		if ($grant_type == "authorization_code" and !$this instanceof IOAuth2Codes) {
-			throw new OAuth2Exception("invalid_request", "Grant type is unsupported");	
-		}
-		if ($grant_type == "password" and !$this instanceof IOAuth2Passwords) {
-			throw new OAuth2Exception("invalid_request", "Grant type is unsupported");	
+			throw new OAuth2Exception("invalid_request", "Invalid grant type");
 		}
 
 		// Checks client and receives information about the client. In case of error throws OAuth2Exception.
 		$client = $this->checkClient($client_id);
-		// check client credentials
-		if ($this instanceof IOAuth2Codes and !$this->checkClientCredentials($client_id, $client_secret)) {
-			throw new OAuth2Exception("unauthorized_client", "Client credentials are invalid");
+		// Checks received client credentials are identical to those saved in the DB
+		if (!$this->checkSecret($client["client_secret"], $client_secret)) {
+			throw new OAuth2Exception("unauthorized_client", "Wrong client credentials");
 		}
 
 		// Authorization code
 		if ($grant_type == "authorization_code") {
+			if (!$this instanceof IOAuth2Codes) {
+				throw new OAuth2Exception("unsupported_grant_type", "Authorization code grant is unsupported");	
+			}
+
 			$code = empty($params["code"]) ? null : $params["code"];
 			$redirect_uri = empty($params["redirect_uri"]) ? null : $params["redirect_uri"];
 
@@ -381,6 +379,9 @@ class OAuth2
 
 		// Resource owner password credentials
 		if ($grant_type == "password") {
+			if (!$this instanceof IOAuth2Passwords) {
+				throw new OAuth2Exception("unsupported_grant_type", "Resource owner password credentials grant is unsupported");	
+			}
 			$code = null;
 
 			$username = empty($params["username"]) ? null : $params["username"];
@@ -411,6 +412,45 @@ class OAuth2
 			$scope = $this->checkScope($scope);
 		}
 
+		// Refresh Tokens
+		if ($grant_type == "refresh_token") {
+			if (!$this instanceof IOAuth2RefreshTokens) {
+				throw new OAuth2Exception("unsupported_grant_type", "Refresh token grant is unsupported");
+			}
+
+			$refresh_token = empty($params["refresh_token"]) ? null : $params["refresh_token"];
+			if (!$refresh_token) {
+				throw new OAuth2Exception("invalid_request", "Required refresh token parameter is missing");
+			}
+			// get the refresh token from the DB
+			$refreshTokenData = $this->getRefreshToken($refresh_token);
+			if (!$refreshTokenData) {
+				throw new OAuth2Exception("invalid_grant", "Refresh token is invalid");
+			}
+			if ($refreshTokenData["expires"] < time()) {
+				throw new OAuth2Exception("invalid_grant", "Refresh token expired");
+			}
+			if ($refreshTokenData["client_id"] != $client_id) {
+				throw new OAuth2Exception("invalid_grant", "Refresh token was issued to another client");
+			}
+			$user_id = $refreshTokenData["user_id"];
+			$code = $refreshTokenData["code"];
+			
+			$scope = empty($params["scope"]) ? null : $params["scope"];
+			// if scope is omitted than it should be treated as equal to the scope originally granted
+			if (!$scope) {
+				$scope = $refreshTokenData["scope"];
+			}
+			else {
+				// Check the scope is valid:
+				// "requested scope MUST NOT include any scope not originally granted by the resource owner"
+				// @see http://tools.ietf.org/html/rfc6749#section-6
+				// If something is wrong the OAuth2Exception will be thrown
+				// including when accepted scopes now and when the refresh token was issued are different
+				$this->checkScope($scope, $refreshTokenData["scope"]); 
+			}
+		}
+
 		$access_token = $this->genCode();
 		$expires_in = $this->config["token_expires_in"];
 
@@ -423,7 +463,7 @@ class OAuth2
 			"expires_in" 	=> $expires_in,
 		);
 		
-		if ($this instanceof IOAuth2RefreshTokens and $grant_type != "client_credentials") {
+		if ($this instanceof IOAuth2RefreshTokens and $grant_type != "client_credentials" and $grant_type != "refresh_token") {
 			$refresh_token = $this->genCode();
 			$refresh_token_expires_in = $this->config["refresh_token_expires_in"];
 
@@ -475,9 +515,10 @@ class OAuth2
 	 *
 	 * @throws OAuth2Exception if requested scope is malformed, invalid or unknown
 	 * @param string $scope
+	 * @param string $granted_scope OPTIONAL
 	 * @return string
 	 */
-	protected function checkScope($scope)
+	protected function checkScope($scope, $granted_scope = null)
 	{
 		// verify scope with some regular expression
 		if ($scope and !preg_match($this->scopeRegEx, $scope)) {
@@ -488,6 +529,10 @@ class OAuth2
 		if ($scope and (count(array_diff(explode(" ", $scope), explode(" ", $this->config["scopes"]))) !== 0)) {
 			throw new OAuth2Exception("invalid_scope", "The requested scope is invalid or unknown");
 		}
+		if (!is_null($granted_scope) and $scope and (count(array_diff(explode(" ", $scope), explode(" ", $granted_scope))) !== 0)) {
+			throw new OAuth2Exception("invalid_scope", "The requested scope is invalid or unknown");
+		}
+
 
 		// check if requested scope is not set, there is no predefined default scope and thus MUST be set
 		if (!$scope and empty($this->config["default_scope"])) {

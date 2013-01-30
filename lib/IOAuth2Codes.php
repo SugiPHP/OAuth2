@@ -40,15 +40,6 @@ interface IOauth2Codes extends IOAuth2Tokens
 	function getAuthCode($code);
 
 	/**
-	 * Checks sended client credentials are identical to those saved in the DB
-	 * 
-	 * @param string $client_id
-	 * @param string $client_secret
-	 * @return boolean
-	 */
-	function checkClientCredentials($client_id, $client_secret);
-
-	/**
 	 * Fetches a token issued in exchange of the code
 	 * 
 	 * @param string $code

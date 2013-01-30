@@ -26,3 +26,12 @@
 	<input type="hidden" name="grant_type" value="client_credentials" />
 	<input type="submit" value="submit" />
 </form>
+
+<br /><br /><br />
+<form method="post" action="http://client1:secret1@auth.loc/token.php">
+	<p><strong>Refresh Token</strong></p>
+	<input type="hidden" name="grant_type" value="refresh_token" />
+	<input type="text" name="refresh_token" value="" />
+	<input type="text" name="scope" value="" />
+	<input type="submit" value="submit" />
+</form>

@@ -6,7 +6,7 @@ Supports several grant types:
  - authorization code
  - username/password pair
  - client credentials
- - refresh token (not ready)
+ - refresh token
 
 Your custom server implementation can specify which grant types to support
 implementing one or more interfaces - IOAuth2Implicit, IOAuth2Codes etc.

@@ -109,15 +109,6 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2Codes::checkClientCredentials()
-	 */
-	function checkClientCredentials($client_id, $client_secret)
-	{
-		$client = $this->getClient($client_id);
-		return $this->checkSecret($client["client_secret"], $client_secret);
-	}
-
-	/**
 	 * Implements IOAuth2Codes::getTokenWithCode()
 	 */
 	function getTokenWithCode($code)
@@ -161,7 +152,11 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	 */
 	function getRefreshToken($token)
 	{
-		// TODO:
+		$stmnt = $this->db->prepare("SELECT * FROM oauth_refresh_tokens WHERE token = :token");
+		$stmnt->bindParam(":token", $token);
+		$stmnt->execute();
+		$data = $stmnt->fetch();
+		return ($data) ? $data : null;
 	}
 
 	/**

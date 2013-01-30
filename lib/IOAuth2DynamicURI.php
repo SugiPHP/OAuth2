@@ -9,7 +9,7 @@
  * Implement this interface if the client can register multiple redirection URI's, or to register only part of the URI, 
  * or not to register any redirection URI as specified in the standard
  */
-interface IOAuth2DynamicURI
+interface IOAuth2DynamicURI extends IOAuth2Tokens
 {
 	/**
 	 * Checks redirect_uri extracted from the request against the registered redirect URIs for the client
