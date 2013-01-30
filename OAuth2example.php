@@ -13,10 +13,11 @@ require __DIR__ . "/lib/OAuth2.php";
 require __DIR__ . "/lib/IOAuth2Tokens.php";
 require __DIR__ . "/lib/IOAuth2Codes.php";
 require __DIR__ . "/lib/IOAuth2Implicit.php";
-require __DIR__ . "/lib/IOAuth2DynamicURI.php";
 require __DIR__ . "/lib/IOAuth2RefreshTokens.php";
+require __DIR__ . "/lib/IOAuth2DynamicURI.php";
+require __DIR__ . "/lib/IOAuth2Passwords.php";
 
-class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit, IOauth2DynamicURI, IOAuth2RefreshTokens
+class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit, IOauth2DynamicURI, IOAuth2RefreshTokens, IOAuth2Passwords
 {
 	/**
 	 * PDO handler
@@ -171,6 +172,15 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 		$stmnt = $this->db->prepare("UPDATE oauth_refresh_tokens SET revoked = 1 WHERE code = :code");
 		$stmnt->bindParam(":code", $code);
 		$stmnt->execute();
+	}
+
+	/**
+	 * Implements IOAuth2Passwords::checkUserCredentials()
+	 */
+	function checkUserCredentials($username, $password)
+	{
+		// TODO: 
+		return 1;
 	}
 
 

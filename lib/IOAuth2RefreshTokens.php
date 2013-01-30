@@ -6,7 +6,7 @@
  */
 
 /**
- * Implement this interface you want to support refresh tokens
+ * Implement this interface if you want to support refresh tokens
  */
 interface IOAuth2RefreshTokens
 {
