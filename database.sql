@@ -1,3 +1,11 @@
+CREATE TABLE oauth_users (
+	user_id			INTEGER NOT NULL /* AUTO_INCREMENT */,
+	username		VARCHAR(32) NOT NULL,
+	password		VARCHAR(60) NOT NULL,
+	created			TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	PRIMARY KEY (user_id)
+);
+
 CREATE TABLE oauth_clients (
 	client_id 		VARCHAR(32) NOT NULL,
 	client_type		VARCHAR(20) NOT NULL,
@@ -21,7 +29,7 @@ CREATE TABLE oauth_codes (
 CREATE TABLE oauth_tokens (
 	token 			VARCHAR(128) NOT NULL,
 	client_id 		VARCHAR(32) NOT NULL,
-	user_id 		INTEGER NOT NULL,
+	user_id 		INTEGER NULL,
 	created 		TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	expires 		INTEGER NOT NULL,
 	scope 			VARCHAR(255) NULL,

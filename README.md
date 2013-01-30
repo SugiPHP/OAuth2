@@ -5,7 +5,7 @@ Supports several grant types:
  - implicit
  - authorization code
  - username/password pair
- - client credentials (not ready)
+ - client credentials
  - refresh token (not ready)
 
 Your custom server implementation can specify which grant types to support

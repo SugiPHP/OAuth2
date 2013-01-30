@@ -14,18 +14,31 @@ $oauth = new OAuth2example;
 $error = "";
 
 if ($_POST) {
-	try {
-		$oauth->saveClient($_POST["client_id"], $_POST["client_type"], $_POST["redirect_uri"], $_POST["client_secret"]);
-		echo "Client created";
-		exit;
-	} catch (OAuth2Exception $e) {
-		$error = $e->error_description;
+	if (!empty($_POST["submit_user"])) {
+		try {
+			$oauth->saveUser($_POST["username"], $_POST["password"]);
+			echo "User created";
+			exit;
+
+		} catch (OAuth2Exception $e) {
+			$error = $e->error_description;
+		}
+
+	}
+	elseif (!empty($_POST["submit_client"])) {
+		try {
+			$oauth->saveClient($_POST["client_id"], $_POST["client_type"], $_POST["redirect_uri"], $_POST["client_secret"]);
+			echo "Client created";
+			exit;
+		} catch (OAuth2Exception $e) {
+			$error = $e->error_description;
+		}
 	}
 }
 ?>
 <html>
 <head>
-	<title>Client Registration</title>
+	<title>Registration</title>
 	<style>
 .error {
 	color: red;
@@ -37,6 +50,23 @@ if ($_POST) {
 	<p class="error"><?= $error; ?></p>
 <?php endif; ?>
 	<form method="post" action="">
+		<p><strong>User Registration</strong></p>
+		<p>
+			<label>Username:
+				<input type="text" name="username" value="<?= empty($_POST["username"]) ? "" : $_POST["username"];?>" /> *
+			</label>
+		</p>
+		<p>
+			<label>Password:
+				<input type="password" name="password" value="" /> *
+			</label>
+		</p>
+		<input type="submit" name="submit_user" value="Save" />
+	</form>
+
+	<br /><br /><br />
+	<form method="post" action="">
+		<p><strong>Client Registration</strong></p>
 		<p>
 			<label>Client ID:
 				<input type="text" name="client_id" value="<?= empty($_POST["client_id"]) ? "" : $_POST["client_id"];?>" /> *
@@ -61,7 +91,7 @@ if ($_POST) {
 				<input type="password" name="client_secret" value="" />
 			</label>
 		</p>
-		<input type="submit" name="submit" value="Save" />
+		<input type="submit" name="submit_client" value="Save" />
 	</form>
 </body>
 </html>

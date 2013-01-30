@@ -28,7 +28,7 @@ class OAuth2
 	 * Regular expression for grant_type
 	 * @var string
 	 */
-	protected $grantTypeRegEx = '#^(authorization_code|password)$#';
+	protected $grantTypeRegEx = '#^(authorization_code|password|client_credentials)$#';
 
 	/**
 	 * Regular expression to verify requested scope
@@ -401,6 +401,16 @@ class OAuth2
 			}
 		}
 
+		// Client Credentials
+		if ($grant_type == "client_credentials") {
+			$code = null;
+			$user_id = null;
+			$scope = empty($params["scope"]) ? null : $params["scope"];
+			
+			// Check the scope is valid. If something is wrong the OAuth2Exception will be thrown
+			$scope = $this->checkScope($scope);
+		}
+
 		$access_token = $this->genCode();
 		$expires_in = $this->config["token_expires_in"];
 
@@ -413,7 +423,7 @@ class OAuth2
 			"expires_in" 	=> $expires_in,
 		);
 		
-		if ($this instanceof IOAuth2RefreshTokens) {
+		if ($this instanceof IOAuth2RefreshTokens and $grant_type != "client_credentials") {
 			$refresh_token = $this->genCode();
 			$refresh_token_expires_in = $this->config["refresh_token_expires_in"];
 

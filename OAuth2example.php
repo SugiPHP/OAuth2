@@ -179,8 +179,12 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	 */
 	function checkUserCredentials($username, $password)
 	{
-		// TODO: 
-		return 1;
+		$stmnt = $this->db->prepare("SELECT user_id, password FROM oauth_users WHERE username = :username");
+		$stmnt->bindParam(":username", $username);
+		$stmnt->execute();
+		$user = $stmnt->fetch();
+		if (!$user) return null;
+		return ($this->checkSecret($user["password"], $password)) ? $user["user_id"] : null;
 	}
 
 
@@ -261,6 +265,50 @@ class OAuth2example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 		$stmnt->bindParam(":client_type", $client_type);
 		$stmnt->bindParam(":redirect_uri", $redirect_uri);
 		$stmnt->bindParam(":client_secret", $secret_hash);
+		$stmnt->execute();
+	}
+
+	public function checkUsernameExists($username)
+	{
+		$stmnt = $this->db->prepare("SELECT user_id FROM oauth_users WHERE username = :username");
+		$stmnt->bindParam(":username", $username);
+		$stmnt->execute();
+		$user = $stmnt->fetch();
+		return ($user and $user["user_id"]);
+	}
+
+	public function saveUser($username, $password)
+	{
+		$username = trim($username);
+		$password = trim($password);
+
+		if (!$username) {
+			throw new OAuth2Exception("username", "Username is missing");
+		}
+		// check username with regEx (might be same as the client ID)
+		if (!preg_match($this->clientIdRegEx, $username)) {
+			throw new OAuth2Exception("username", "Username is invalid");
+		}
+
+		// check username does not exists
+		if ($this->checkUsernameExists($username)) {
+			throw new OAuth2Exception("username", "A user with this username exists");
+		}
+		
+		if (!$password) {
+			throw new OAuth2Exception("password", "Password is missing");	
+		}
+		// check password meet some minimum requirements.
+		// TODO: needs more than simple length check
+		if (strlen($password) < 3) {
+			throw new OAuth2Exception("password", "Password is too short");
+		}
+		
+		$hash = $this->cryptSecret($password);
+
+		$stmnt = $this->db->prepare("INSERT INTO oauth_users (username, password) VALUES (:username, :password)");
+		$stmnt->bindParam(":username", $username);
+		$stmnt->bindParam(":password", $hash);
 		$stmnt->execute();
 	}
 }
