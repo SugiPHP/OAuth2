@@ -34,3 +34,10 @@
 	<input type="text" name="scope" value="" />
 	<input type="submit" value="submit" />
 </form>
+
+<br /><br /><br />
+<form method="post" action="http://server.auth.loc/resource.php">
+	<p><strong>Get Resource</strong></p>
+	<input type="text" name="access_token" value="" />
+	<input type="submit" value="submit" />
+</form>

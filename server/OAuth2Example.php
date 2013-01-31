@@ -5,6 +5,7 @@
  * Use it as a reference only!
  * 
  * @package OAuth2
+ * @category example
  */
 
 error_reporting(-1);
@@ -31,7 +32,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 			"default_scope"		=> "basic",
 			"code_size"			=> 32,
 			"code_expires_in"	=> 120, // much more than needed. Only for testing purposes
-			"token_expires_in" 	=> 900, // 15 minutes
+			"token_expires_in" 	=> 1800, // 30 minutes
 		));
 
 		// Establish a database connection
@@ -152,6 +153,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	 */
 	function getRefreshToken($token)
 	{
+		// Parent class will handle revoked, expired and invalid in other way tokens
 		$stmnt = $this->db->prepare("SELECT * FROM oauth_refresh_tokens WHERE token = :token");
 		$stmnt->bindParam(":token", $token);
 		$stmnt->execute();

@@ -427,6 +427,9 @@ class OAuth2
 			if (!$refreshTokenData) {
 				throw new OAuth2Exception("invalid_grant", "Refresh token is invalid");
 			}
+			if (!empty($refreshTokenData["revoked"])) {
+				throw new OAuth2Exception("invalid_grant", "Refresh token is revoked");
+			}
 			if ($refreshTokenData["expires"] < time()) {
 				throw new OAuth2Exception("invalid_grant", "Refresh token expired");
 			}
