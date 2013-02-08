@@ -3,6 +3,7 @@
  * OAuth2.0 Authorization Server
  * 
  * @package OAuth2
+ * @author Plamen Popov <tzappa@gmail.com>
  */
 
 require_once __DIR__ . "/OAuth2Exception.php";
@@ -70,21 +71,21 @@ class OAuth2
 		$this->config = array(
 			// A list of space-delimited, case-sensitive strings. The order does not matter. 
 			// Each string adds an additional access range to the requested scope
-			"scopes" 			=> "", 
+			"scopes"            => "", 
 			// If in the client's request is missing the scope parameter
 			// We can either process the request with pre-defined default value (eg. "default_scope" => "basic")
 			// or fail the request (set "default_scope" to FALSE or empty string)
 			// @see http://tools.ietf.org/html/rfc6749#section-4.1.1
 			// @see http://tools.ietf.org/html/rfc6749#section-3.3
-			"default_scope" 	=> false,
+			"default_scope"     => false,
 			// the length (chars) of the codes generated. Anything between 32 and 128. Default is 64.
-			"code_size"			=> 64,
+			"code_size"         => 64,
 			// The lifetime of the auth code in seconds. Defaults to 30 seconds.
-			"code_expires_in"	=> 30,
+			"code_expires_in"   => 30,
 			// The lifetime of access token in seconds. Defaults to 1 hour.
-			"token_expires_in" 	=> 3600,
+			"token_expires_in"  => 3600,
 			// The lifetime of refresh token in seconds. Defaults to 30 days
-			"refresh_token_expires_in"	=> 2592000, 
+			"refresh_token_expires_in" => 2592000, 
 		);
 
 		// Override default options
@@ -222,11 +223,11 @@ class OAuth2
 		$this->scope = $scope;
 
 		return array(
-			"state" 		=> $state,	
+			"state"         => $state,	
 			"response_type" => $response_type,
-			"client_id"		=> $client_id,
-			"redirect_uri"	=> $redirect_uri,
-			"scope"			=> $scope,
+			"client_id"     => $client_id,
+			"redirect_uri"  => $redirect_uri,
+			"scope"         => $scope,
 		);
 	}
 
@@ -244,7 +245,11 @@ class OAuth2
 			$this->code = $this->genCode();
 			// save the auth code in some storage (DB)
 			$this->expires_in = $this->config["code_expires_in"];
-			$this->saveAuthCode($this->code, $this->client_id, $user_id, strtotime("+{$this->expires_in} seconds"), $this->redirect_uri, $this->scope);
+			try {
+				$this->saveAuthCode($this->code, $this->client_id, $user_id, strtotime("+{$this->expires_in} seconds"), $this->redirect_uri, $this->scope);
+			} catch (\Exception $e) {
+				throw new OAuth2Exception("server_error", $e->getMessage());
+			}
 
 			$location = $this->rebuildUri($this->redirect_uri, array("code" => $this->code, "state" => $this->state), array());
 		}
@@ -257,14 +262,18 @@ class OAuth2
 			$this->expires_in = $this->config["token_expires_in"];
 
 			// save token in some storage (DB)
-			$this->saveToken($this->access_token, $this->client_id, $user_id, strtotime("+{$this->expires_in} seconds"), $this->scope);
+			try {
+				$this->saveToken($this->access_token, $this->client_id, $user_id, strtotime("+{$this->expires_in} seconds"), $this->scope);
+			} catch (\Exception $e) {
+				throw new OAuth2Exception("server_error", $e->getMessage());
+			}
 
 			$location = $this->rebuildUri($this->redirect_uri, array(), array(
-				"access_token"	=> $this->access_token,
-				"token_type"	=> $this->token_type,
-				"expires_in" 	=> $this->expires_in,
-				"scope"			=> $this->scope,
-				"state"			=> $this->state,
+				"access_token" => $this->access_token,
+				"token_type"   => $this->token_type,
+				"expires_in"   => $this->expires_in,
+				"scope"        => $this->scope,
+				"state"        => $this->state,
 			));
 		}
 
@@ -336,8 +345,12 @@ class OAuth2
 				throw new OAuth2Exception("invalid_request", "Code parameter is invalid");	
 			}
 			
-			// retrieve stored data associated with the code
-			$codeData = $this->getAuthCode($code);
+			// retrieve stored data associated with the code (DB)
+			try {
+				$codeData = $this->getAuthCode($code);
+			} catch (\Exception $e) {
+				throw new OAuth2Exception("server_error", $e->getMessage());
+			}
 
 			if (!$codeData) {
 				throw new OAuth2Exception("invalid_grant", "Invalid code");
@@ -355,17 +368,30 @@ class OAuth2
 			// Check for invalidated authorization codes
 			// "If an authorization code is used more than once, the authorization server MUST deny the request"
 			// @see http://tools.ietf.org/html/rfc6749#section-4.1.2
-			if ($old_token = $this->getTokenWithCode($code)) {
+			try {
+				$old_token = $this->getTokenWithCode($code);
+			} catch (\Exception $e) {
+				throw new OAuth2Exception("server_error", $e->getMessage());
+			}
+			if ($old_token) {
 				// ".. and SHOULD revoke (when possible) all tokens previously issued based on that authorization code"
 				// @see http://tools.ietf.org/html/rfc6749#section-4.1.2
 				// it's possible!
 				// revoke all refresh tokens based on this code if any
 				if ($this instanceof IOAuth2RefreshTokens) {
-					$this->revokeRefreshTokensWithCode($code);
+					try {
+						$this->revokeRefreshTokensWithCode($code);
+					} catch (\Exception $e) {
+						throw new OAuth2Exception("server_error", $e->getMessage());
+					}
 				}
 				
 				// revoke access token
-				$this->revokeToken($old_token);
+				try {
+					$this->revokeToken($old_token);
+				} catch (\Exception $e) {
+					throw new OAuth2Exception("server_error", $e->getMessage());
+				}
 				
 				throw new OAuth2Exception("invalid_grant", "Used authorization code");
 			}
@@ -458,7 +484,11 @@ class OAuth2
 		$expires_in = $this->config["token_expires_in"];
 
 		// save token in some storage (DB)
-		$this->saveToken($access_token, $client_id, $user_id, strtotime("+$expires_in seconds"), $scope, $code);
+		try {
+			$this->saveToken($access_token, $client_id, $user_id, strtotime("+$expires_in seconds"), $scope, $code);
+		} catch (\Exception $e) {
+			throw new OAuth2Exception("server_error", $e->getMessage());
+		}
 
 		$params = array(
 			"access_token"	=> $access_token,
@@ -471,7 +501,11 @@ class OAuth2
 			$refresh_token_expires_in = $this->config["refresh_token_expires_in"];
 
 			// save refresh token
-			$this->saveRefreshToken($refresh_token, $client_id, $user_id, strtotime("+$refresh_token_expires_in seconds"), $scope, $code);
+			try {
+				$this->saveRefreshToken($refresh_token, $client_id, $user_id, strtotime("+$refresh_token_expires_in seconds"), $scope, $code);
+			} catch (\Exception $e) {
+				throw new OAuth2Exception("server_error", $e->getMessage());
+			}
 
 			$params["refresh_token"] = $refresh_token;
 		}
@@ -504,7 +538,12 @@ class OAuth2
 			throw new OAuth2Exception("invalid_request", "Client ID is malformed");
 		}
 		// get client_id details from some storage (DB)
-		$client = $this->getClient($client_id);
+		try {
+			$client = $this->getClient($client_id);
+		} catch (\Exception $e) {
+			throw new OAuth2Exception("server_error", $e->getMessage);
+		}
+
 		if (!$client) {
 			throw new OAuth2Exception("unauthorized_client", "Client does not exist");
 		}

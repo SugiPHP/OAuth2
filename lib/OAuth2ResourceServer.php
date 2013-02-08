@@ -97,6 +97,7 @@ abstract class OAuth2ResourceServer
 		}
 
 		$tokenData = $this->getToken($access_token);
+
 		if (!$tokenData) {
 			throw new OAuth2Exception("invalid_token", "The token provided is invalid");
 		}
@@ -105,6 +106,9 @@ abstract class OAuth2ResourceServer
 			throw new OAuth2Exception("invalid_token", "The token provided is revoked");
 		}
 
+		if (empty($tokenData["expires"])) {
+			throw new OAuth2Exception("server_error", "Token expire date is unavailable");
+		}
 		if ($tokenData["expires"] < time()) {
 			throw new OAuth2Exception("invalid_token", "The token provided has expired");
 		}
