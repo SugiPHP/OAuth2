@@ -1,12 +1,15 @@
-<?php
+<?php namespace OAuth2;
 /**
- * OAuth2.0 Resource Server
- * 
  * @package OAuth2
+ * @author Plamen Popov <tzappa@gmail.com>
+ * @license MIT
  */
 
 require_once __DIR__ . "/OAuth2Exception.php";
 
+/**
+ * OAuth2.0 Resource Server
+ */
 abstract class OAuth2ResourceServer
 {
 	/**

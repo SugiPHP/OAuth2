@@ -1,4 +1,4 @@
-<?php
+<?php namespace OAuth2;
 /**
  * Client Registration form.
  * This is not required by the OAuth2 specification

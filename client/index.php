@@ -1,4 +1,4 @@
-<?php
+<?php namespace OAuth2;
 	session_start();
 
 	$redirect_uri = "http://client.auth.loc/redirect.php?rand=".mt_rand(100, 999);

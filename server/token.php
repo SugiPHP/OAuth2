@@ -1,4 +1,4 @@
-<?php
+<?php namespace OAuth2;
 /**
  * Token endpoint.
  * The client (OAuth2 client) uses this endpoint to exchange authorization grant for an access token or refresh token

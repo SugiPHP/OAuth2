@@ -1,4 +1,4 @@
-<?php
+<?php namespace OAuth2;
 /**
  * Resource Server resource endpoint.
  * This is not a part of OAuth2 authorization server.

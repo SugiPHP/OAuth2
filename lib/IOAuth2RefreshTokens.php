@@ -1,8 +1,8 @@
-<?php
+<?php namespace OAuth2;
 /**
- * OAuth2.0 Authorization Server
- * 
  * @package OAuth2
+ * @author Plamen Popov <tzappa@gmail.com>
+ * @license MIT
  */
 
 require_once __DIR__ . "/IOAuth2Tokens.php";

@@ -1,11 +1,13 @@
-<?php
+<?php namespace OAuth2;
 /**
- * OAuth2.0 Exception
- * 
  * @package OAuth2
+ * @author Plamen Popov <tzappa@gmail.com>
+ * @license MIT
  */
 
-
+/**
+ * OAuth2.0 Exception
+ */
 class OAuth2Exception extends \Exception
 {
 	public $error_description;

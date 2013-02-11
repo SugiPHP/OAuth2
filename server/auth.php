@@ -1,4 +1,4 @@
-<?php
+<?php namespace OAuth2;
 /**
  * Authorization endpoint.
  * The client (OAuth2 client) uses this endpoint to obtain authorization from the resource owner (user)

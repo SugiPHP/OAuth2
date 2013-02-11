@@ -1,4 +1,4 @@
-<?php
+<?php namespace OAuth2;
 /**
  * OAuth2.0 Resource Server example
  * This is NOT a production ready.

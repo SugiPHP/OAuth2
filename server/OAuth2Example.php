@@ -1,4 +1,4 @@
-<?php
+<?php namespace OAuth2;
 /**
  * OAuth2.0 Authorization Server example
  * This is NOT a production ready.
@@ -36,9 +36,9 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 		));
 
 		// Establish a database connection
-		$this->db = new PDO('mysql:host=localhost;dbname=test', "test", "test");
+		$this->db = new \PDO('mysql:host=localhost;dbname=test', "test", "test");
 		// throw exceptions on database errors
-		$this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+		$this->db->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 	}
 
 	/**

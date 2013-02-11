@@ -1,4 +1,4 @@
-<?php
+<?php namespace OAuth2;
 	session_start();
 
 	$error = empty($_GET["error"]) ? "" : $_GET["error"];

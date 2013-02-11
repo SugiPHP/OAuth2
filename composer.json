@@ -1,15 +1,21 @@
 {
-    "name": "tzappa/auth",
-    "description": "OAuth2.0 Server",
+    "name": "tzappa/oauth2",
+    "description": "OAuth2.0",
+    "type": "library",
     "authors": [
         {
             "name": "Plamen Popov",
-            "email": "tzappa@gmail.com"
+            "email": "tzappa@gmail.com",
+            "role": "Developer"
         }
     ],
+    "licence": "MIT",
     "require": {
-
+        "php": ">=5.3"
     },
+    "autoload": {
+        "psr-0": {"OAuth2": "lib/"}
+    },    
     "require-dev": {
         "phpunit/phpunit": "3.7.*"
     }
