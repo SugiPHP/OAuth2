@@ -1,4 +1,4 @@
-<?php namespace OAuth2;
+<?php
 /**
  * Resource Server resource endpoint.
  * This is not a part of OAuth2 authorization server.
@@ -7,14 +7,16 @@
  * @category example
  */
 
-require "OAuth2ResourceServerExample.php";
+error_reporting(-1);
+require "../vendor/autoload.php";
+require "ResourceServerExample.php";
 
-$rserver = new OAuth2ResourceServerExample;
+$rserver = new ResourceServerExample();
 try {
 	$t = $rserver->verifyToken("basic");
 	echo json_encode(array("user" => $t["user_id"], "eyes" => "green", "hair" => "brown"));
 	exit;
 }
-catch (OAuth2Exception $e) {
+catch (OAuth2\Exception $e) {
 	$rserver->handleException($e);
 }

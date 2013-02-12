@@ -5,13 +5,11 @@
  * @license MIT
  */
 
-require_once __DIR__ . "/IOAuth2Tokens.php";
-
 /**
  * Implement this interface if the client can register multiple redirection URI's, or to register only part of the URI, 
  * or not to register any redirection URI as specified in the standard
  */
-interface IOAuth2DynamicURI extends IOAuth2Tokens
+interface IDynamicURI extends ITokens
 {
 	/**
 	 * Checks redirect_uri extracted from the request against the registered redirect URIs for the client

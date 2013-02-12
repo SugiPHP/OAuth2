@@ -74,7 +74,7 @@ class Client
 
 		// Get token in exchange of code
 		if (!empty($params["code"])) {
-			// check the state. If the state is missing or invalid OAuthException will be thrown
+			// check the state. If the state is missing or invalid Exception will be thrown
 			if ($this->config["auto_set_state"]) $this->checkState($params);
 
 			$request = array(
@@ -91,7 +91,7 @@ class Client
 			);
 		}
 		else {
-			throw new OAuthException("unknown grant type");
+			throw new Exception("unknown grant type");
 		}
 
 		$headers = array(
@@ -100,7 +100,7 @@ class Client
 		$result = $this->curlRequest($this->config["token_endpoint"], "POST", $request, $headers, "application/x-www-form-urlencoded");
 
 		if (isset($result["error"])) {
-			throw new OAuthException($result["error"], isset($result["error_description"]) ? $result["error_description"] : null);
+			throw new Exception($result["error"], isset($result["error_description"]) ? $result["error_description"] : null);
 		}
 
 		if ($this->config["use_sessions"]) {
@@ -117,13 +117,13 @@ class Client
 		}
 
 		if (empty($params["access_token"])) {
-			throw new OAuthException("Access token is missing");
+			throw new Exception("Access token is missing");
 		}
 		if (empty($params["token_type"])) {
-			throw new OAuthException("Token type is missing");
+			throw new Exception("Token type is missing");
 		}
 		if ($params["token_type"] != "bearer") {
-			throw new OAuthException("Unsupported token type");
+			throw new Exception("Unsupported token type");
 		}
 
 		$headers["Authorization"] = "Bearer " . $params["access_token"];
@@ -138,7 +138,7 @@ class Client
 		}
 
 		if (isset($result["error"])) {
-			throw new OAuthException($result["error"], isset($result["error_description"]) ? $result["error_description"] : null);
+			throw new Exception($result["error"], isset($result["error_description"]) ? $result["error_description"] : null);
 		}
 
 		return $result;
@@ -244,7 +244,7 @@ class Client
 	protected function checkState($params)
 	{
 		if (empty($params["state"]) or empty($_SESSION["state"]) or ($params["state"] != $_SESSION["state"])) {
-			throw new OAuthException("State parameter is missing or invalid");
+			throw new Exception("State parameter is missing or invalid");
 		}
 		// unset($_SESSION["state"]);
 
@@ -272,24 +272,5 @@ class Client
 	protected function getSessionName()
 	{
 		return md5($this->config["auth_endpoint"]);
-	}
-}
-
-class OAuthException extends \Exception
-{
-	public $error_description;
-
-	public function __construct($error, $error_description = null)
-	{
-		parent::__construct($error);
-		$this->error = $error;
-		$this->error_description = $error_description;
-	}
-
-	public function __toString()
-	{
-		$e = array("error" => $this->getMessage());
-		if (isset($this->error_description)) $e["error_description"] = $this->error_description;
-		return json_encode($e);
 	}
 }

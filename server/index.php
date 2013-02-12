@@ -1,4 +1,4 @@
-<?php namespace OAuth2;
+<?php
 /**
  * Client Registration form.
  * This is not required by the OAuth2 specification
@@ -8,9 +8,12 @@
  * @package OAuth2
  * @category example
  */
-require "OAuth2Example.php";
 
-$oauth = new OAuth2Example;
+error_reporting(-1);
+require "../vendor/autoload.php";
+require "Example.php";
+
+$oauth = new Example();
 $error = "";
 
 if ($_POST) {
@@ -20,7 +23,7 @@ if ($_POST) {
 			echo "User created";
 			exit;
 
-		} catch (OAuth2Exception $e) {
+		} catch (OAuth2\Exception $e) {
 			$error = $e->error_description;
 		}
 
@@ -30,7 +33,7 @@ if ($_POST) {
 			$oauth->saveClient($_POST["client_id"], $_POST["client_type"], $_POST["redirect_uri"], $_POST["client_secret"]);
 			echo "Client created";
 			exit;
-		} catch (OAuth2Exception $e) {
+		} catch (OAuth2\Exception $e) {
 			$error = $e->error_description;
 		}
 	}

@@ -1,4 +1,4 @@
-<?php namespace OAuth2;
+<?php
 /**
  * OAuth2.0 Resource Server example
  * This is NOT a production ready.
@@ -8,11 +8,9 @@
  * @category example
  */
 
-error_reporting(-1);
+use OAuth2\ResourceServer;
 
-require __DIR__ . "/../lib/OAuth2ResourceServer.php";
-
-class OAuth2ResourceServerExample extends OAuth2ResourceServer
+class ResourceServerExample extends ResourceServer
 {
 	/**
 	 * PDO handler

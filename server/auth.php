@@ -1,4 +1,4 @@
-<?php namespace OAuth2;
+<?php
 /**
  * Authorization endpoint.
  * The client (OAuth2 client) uses this endpoint to obtain authorization from the resource owner (user)
@@ -9,7 +9,9 @@
  * @category example
  */
 
-require "OAuth2Example.php";
+error_reporting(-1);
+require "../vendor/autoload.php";
+require "Example.php";
 
 // According to the RFC, this MUST be the first thing to do: 
 // Auth server MUST verify the identity of the user.
@@ -22,10 +24,10 @@ if (!$user_id) {
 }
 
 
-$auth = new OAuth2Example();
+$auth = new Example();
 try {
 	$request = $auth->authRequest($_GET);
-} catch (OAuth2Exception $e) {
+} catch (OAuth2\Exception $e) {
 	$auth->handleException($e);
 	exit;
 }

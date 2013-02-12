@@ -1,4 +1,4 @@
-<?php namespace OAuth2;
+<?php
 /**
  * OAuth2.0 Authorization Server example
  * This is NOT a production ready.
@@ -8,17 +8,15 @@
  * @category example
  */
 
-error_reporting(-1);
+use OAuth2\Server;
+use OAuth2\ITokens;
+use OAuth2\ICodes;
+use OAuth2\IImplicit;
+use OAuth2\IDynamicURI;
+use OAuth2\IRefreshTokens;
+use OAuth2\IPasswords;
 
-require __DIR__ . "/../lib/OAuth2.php";
-require __DIR__ . "/../lib/IOAuth2Tokens.php";
-require __DIR__ . "/../lib/IOAuth2Codes.php";
-require __DIR__ . "/../lib/IOAuth2Implicit.php";
-require __DIR__ . "/../lib/IOAuth2RefreshTokens.php";
-require __DIR__ . "/../lib/IOAuth2DynamicURI.php";
-require __DIR__ . "/../lib/IOAuth2Passwords.php";
-
-class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAuth2Implicit, IOauth2DynamicURI, IOAuth2RefreshTokens, IOAuth2Passwords
+class Example extends Server implements ITokens, ICodes, IImplicit, IDynamicURI, IRefreshTokens, IPasswords
 {
 	/**
 	 * PDO handler
@@ -42,7 +40,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2Tokens::getClient()
+	 * Implements ITokens::getClient()
 	 */
 	function getClient($client_id)
 	{
@@ -55,7 +53,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2Tokens::saveToken()
+	 * Implements ITokens::saveToken()
 	 */
 	function saveToken($token, $client_id, $user_id, $expires, $scope, $code = null)
 	{
@@ -71,7 +69,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2Tokens::revokeToken()
+	 * Implements ITokens::revokeToken()
 	 */
 	function revokeToken($token)
 	{
@@ -81,7 +79,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2Codes::saveAuthCode()
+	 * Implements ICodes::saveAuthCode()
 	 */
 	function saveAuthCode($code, $client_id, $user_id, $expires, $redirect_uri, $scope)
 	{
@@ -97,7 +95,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2Codes::getAuthCode()
+	 * Implements ICodes::getAuthCode()
 	 */
 	function getAuthCode($code)
 	{
@@ -110,7 +108,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2Codes::getTokenWithCode()
+	 * Implements ICodes::getTokenWithCode()
 	 */
 	function getTokenWithCode($code)
 	{
@@ -133,7 +131,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2RefreshTokens::saveRefreshToken()
+	 * Implements IRefreshTokens::saveRefreshToken()
 	 */
 	function saveRefreshToken($token, $client_id, $user_id, $expires, $scope, $code = null)
 	{
@@ -149,7 +147,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2RefreshTokens::getRefreshToken()
+	 * Implements IRefreshTokens::getRefreshToken()
 	 */
 	function getRefreshToken($token)
 	{
@@ -162,7 +160,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2RefreshTokens::revokeRefreshTokensWithCode()
+	 * Implements IRefreshTokens::revokeRefreshTokensWithCode()
 	 */
 	function revokeRefreshTokensWithCode($code)
 	{
@@ -172,7 +170,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	}
 
 	/**
-	 * Implements IOAuth2Passwords::checkUserCredentials()
+	 * Implements IPasswords::checkUserCredentials()
 	 */
 	function checkUserCredentials($username, $password)
 	{
@@ -192,7 +190,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	/**
 	 * Checks the user already had granted access for this client with given scope.
 	 * This method is not part of OAuth2 specification.
-	 * @see OAuth2example::saveAccessGrant()
+	 * @see self::saveAccessGrant()
 	 * 
 	 * @param mixed $user_id
 	 * @param string $client_id
@@ -207,7 +205,7 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	/**
 	 * Store information that the user has granted access for the given scope to the client
 	 * This method is not part of OAuth2 specification.
-	 * @see OAuth2example::getAccessGranted()
+	 * @see self::getAccessGranted()
 	 * 
 	 * @param mixed $user_id
 	 * @param string $client_id
@@ -233,24 +231,24 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 	public function saveClient($client_id, $client_type, $redirect_uri, $client_secret)
 	{
 		if (!preg_match($this->clientIdRegEx, $client_id)) {
-			throw new OAuth2Exception("client_id", "Client ID is invalid");
+			throw new OAuth2\Exception("client_id", "Client ID is invalid");
 		}
 		// Check the client_id exists. Reusing existing code
 		if ($this->getClient($client_id)) {
-			throw new OAuth2Exception("client_id", "Client ID exists");
+			throw new OAuth2\Exception("client_id", "Client ID exists");
 		}
 
 		if (!preg_match($this->clientTypeRegEx, $client_type)) {
-			throw new OAuth2Exception("client_type", "Client type is invalid");
+			throw new OAuth2\Exception("client_type", "Client type is invalid");
 		}
 
 		if (!$redirect_uri) {
-			throw new OAuth2Exception("redirect_uri", "Required redirect URI field is missing");	
+			throw new OAuth2\Exception("redirect_uri", "Required redirect URI field is missing");	
 		}
 		// TODO: check redirect_uri
 		
 		if (!$client_secret and $client_type == "confidential") {
-			throw new OAuth2Exception("client_secret", "Client secret must be provided for confidential clients");
+			throw new OAuth2\Exception("client_secret", "Client secret must be provided for confidential clients");
 		}
 
 		// hash the secret
@@ -280,25 +278,25 @@ class OAuth2Example extends OAuth2 implements IOAuth2Tokens, IOAuth2Codes, IOAut
 		$password = trim($password);
 
 		if (!$username) {
-			throw new OAuth2Exception("username", "Username is missing");
+			throw new OAuth2\Exception("username", "Username is missing");
 		}
 		// check username with regEx (might be same as the client ID)
 		if (!preg_match($this->clientIdRegEx, $username)) {
-			throw new OAuth2Exception("username", "Username is invalid");
+			throw new OAuth2\Exception("username", "Username is invalid");
 		}
 
 		// check username does not exists
 		if ($this->checkUsernameExists($username)) {
-			throw new OAuth2Exception("username", "A user with this username exists");
+			throw new OAuth2\Exception("username", "A user with this username exists");
 		}
 		
 		if (!$password) {
-			throw new OAuth2Exception("password", "Password is missing");	
+			throw new OAuth2\Exception("password", "Password is missing");	
 		}
 		// check password meet some minimum requirements.
 		// TODO: needs more than simple length check
 		if (strlen($password) < 3) {
-			throw new OAuth2Exception("password", "Password is too short");
+			throw new OAuth2\Exception("password", "Password is too short");
 		}
 		
 		$hash = $this->cryptSecret($password);

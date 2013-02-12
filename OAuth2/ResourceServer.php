@@ -5,12 +5,10 @@
  * @license MIT
  */
 
-require_once __DIR__ . "/OAuth2Exception.php";
-
 /**
- * OAuth2.0 Resource Server
+ * OAuth2 Resource Server
  */
-abstract class OAuth2ResourceServer
+abstract class ResourceServer
 {
 	/**
 	 * Regular expression to extract token from the HTTP headers
@@ -72,52 +70,52 @@ abstract class OAuth2ResourceServer
 		if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
 			$authorization = $_SERVER["HTTP_AUTHORIZATION"];
 			if (!preg_match($this->bearerTokenRegEx, $authorization, $matches)) {
-				throw new OAuth2Exception("", "");
+				throw new Exception("", "");
 			}
 			$access_token = $matches[1];
 		} elseif ($headers = apache_request_headers() and isset($headers["Authorization"])) {
 			$authorization = $headers["Authorization"];
 			if (!preg_match($this->bearerTokenRegEx, $authorization, $matches)) {
-				throw new OAuth2Exception("", "");
+				throw new Exception("", "");
 			}
 			$access_token = $matches[1];
 		} elseif (isset($_POST["access_token"])) {
 			if (!$this->config["accept_post_requests"]) {
-				throw new OAuth2Exception("invalid_request", "Server does not support HTTP POST auth requests");
+				throw new Exception("invalid_request", "Server does not support HTTP POST auth requests");
 			}
 			$access_token = $_POST["access_token"];
 		} elseif (isset($_GET["access_token"])) {
 			if (!$this->config["accept_get_requests"]) {
-				throw new OAuth2Exception("invalid_request", "Server does not support HTTP GET auth requests");
+				throw new Exception("invalid_request", "Server does not support HTTP GET auth requests");
 			}
 			$access_token = $_GET["access_token"];
 		} else {
-			throw new OAuth2Exception("", "");
+			throw new Exception("", "");
 		}
 
 		if (!$access_token) {
-			throw new OAuth2Exception("invalid_request", "Required token parameter is missing");
+			throw new Exception("invalid_request", "Required token parameter is missing");
 		}
 
 		$tokenData = $this->getToken($access_token);
 
 		if (!$tokenData) {
-			throw new OAuth2Exception("invalid_token", "The token provided is invalid");
+			throw new Exception("invalid_token", "The token provided is invalid");
 		}
 
 		if (!empty($tokenData["revoked"])) {
-			throw new OAuth2Exception("invalid_token", "The token provided is revoked");
+			throw new Exception("invalid_token", "The token provided is revoked");
 		}
 
 		if (empty($tokenData["expires"])) {
-			throw new OAuth2Exception("server_error", "Token expire date is unavailable");
+			throw new Exception("server_error", "Token expire date is unavailable");
 		}
 		if ($tokenData["expires"] < time()) {
-			throw new OAuth2Exception("invalid_token", "The token provided has expired");
+			throw new Exception("invalid_token", "The token provided has expired");
 		}
 
 		if (!$this->checkScope($scope, $tokenData["scope"])) {
-			throw new OAuth2Exception("insufficient_scope", "Requested resource requires privilege that is not granted by the owner");
+			throw new Exception("insufficient_scope", "Requested resource requires privilege that is not granted by the owner");
 		}
 
 		return array(
@@ -162,9 +160,9 @@ abstract class OAuth2ResourceServer
 	 * Handles an exception thrown by this class
 	 * @see http://tools.ietf.org/html/rfc6750#section-3.1
 	 * 
-	 * @param OAuth2Exception $e
+	 * @param OAuth2\Exception $e
 	 */
-	public function handleException(OAuth2Exception $e)
+	public function handleException(Exception $e)
 	{
 		$error = $e->getMessage();
 		$realm = ($this->scope) ? ' realm="' . $this->scope . '", ' : '';

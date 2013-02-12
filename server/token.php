@@ -1,4 +1,4 @@
-<?php namespace OAuth2;
+<?php
 /**
  * Token endpoint.
  * The client (OAuth2 client) uses this endpoint to exchange authorization grant for an access token or refresh token
@@ -8,7 +8,9 @@
  * @category example
  */
 
-require "OAuth2Example.php";
+error_reporting(-1);
+require "../vendor/autoload.php";
+require "Example.php";
 
 // TODO: this is better to be moved in OAuth2 or ?
 if (!isset($_SERVER["PHP_AUTH_USER"])) {
@@ -23,10 +25,10 @@ if (!$_POST) {
 	exit;
 }
 
-$auth = new OAuth2Example();
+$auth = new Example();
 try {
 	// check client request
 	$requestParams = $auth->tokenRequest();
-} catch (OAuth2Exception $e) {
+} catch (OAuth2\Exception $e) {
 	$auth->handleException($e);
 }

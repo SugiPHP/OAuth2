@@ -9,6 +9,9 @@
             "role": "Developer"
         }
     ],
+    "autoload": {
+        "psr-0": {"OAuth2": ""}
+    },
     "licence": "MIT",
     "require": {
         "php": ">=5.3"

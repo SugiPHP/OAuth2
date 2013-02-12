@@ -5,13 +5,11 @@
  * @license MIT
  */
 
-require_once __DIR__ . "/IOAuth2Tokens.php";
-
 /**
  * Implement this interface to use authorization codes.
  * @see http://tools.ietf.org/html/rfc6749#section-1.3.1
  */
-interface IOauth2Codes extends IOAuth2Tokens
+interface ICodes extends ITokens
 {
 	/**
 	 * Saves authorization request code. Based on this code the client will ask for access token.

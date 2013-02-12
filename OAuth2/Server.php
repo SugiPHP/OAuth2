@@ -5,13 +5,10 @@
  * @license MIT
  */
 
-require_once __DIR__ . "/OAuth2Exception.php";
-
 /**
  * OAuth2 Server
- * TODO rename it to Server
  */
-class OAuth2
+class Server
 {
 	/**
 	 * Regular expression to verify client ID's
@@ -53,21 +50,21 @@ class OAuth2
 	protected $config = array();
 
 	/**
-	 * Storage for filtered data that was requested or has been created by the OAuth2 class
+	 * Storage for filtered data that was requested or has been created by the Server class
 	 * @var array
 	 */
 	protected $data = array();
 
 	/**
-	 * Creates an OAuth2 instance.
+	 * Creates an Server instance.
 	 * Implementor of the OAuth2 server cannot use this class directly.
 	 *
 	 * @param array $config
 	 */
 	protected function __construct(array $config = array())
 	{
-		if (!$this instanceof IOAuth2Tokens) {
-			throw new \Exception("To use OAuth2 you must first implement IOAuth2Tokens");
+		if (!$this instanceof ITokens) {
+			throw new \Exception("To use OAuth2 you must first implement ITokens");
 		}
 
 		// Default configuration options
@@ -101,7 +98,7 @@ class OAuth2
 	}
 
 	/**
-	 * Setter for all filtered request parameters or parameters issued by the OAuth2 class
+	 * Setter for all filtered request parameters or parameters issued by the Server class
 	 */
 	public function __set($name, $value)
 	{
@@ -109,7 +106,7 @@ class OAuth2
 	}
 
 	/**
-	 * Getter for all filtered request parameters or parameters issued by the OAuth2 class
+	 * Getter for all filtered request parameters or parameters issued by the Server class
 	 */
 	public function __get($name)
 	{
@@ -120,9 +117,9 @@ class OAuth2
 	 * Handles an exception thrown by this class, typically by printing JSON encoded errors, or by redirecting user-agent to 
 	 * a specific location with error messages as a query parameter or in fragment components of the URI
 	 * 
-	 * @param OAuth2Exception $e
+	 * @param OAuth2\Exception $e
 	 */
-	public function handleException(OAuth2Exception $e)
+	public function handleException(Exception $e)
 	{
 		if (!$this->redirect_uri) {
 			echo $e;
@@ -147,7 +144,7 @@ class OAuth2
 	 *  - "redirect_uri" OPTIONAL
 	 *  - "scope" OPTIONAL - @see http://tools.ietf.org/html/rfc6749#section-3.3
 	 *
-	 * @throws OAuth2Exception
+	 * @throws Exception
 	 * @param array $params - GET or POST request
 	 * @return array - An associative array containing validated parameters passed from the client
 	 */
@@ -167,23 +164,23 @@ class OAuth2
 			// This check is first, because even if we knew the redirect_uri, we cannot redirect to that uri
 			// since we don't know where the error parameter should be - in the query (for "code" auth) or 
 			// in the fragment component (for the "token" auth)
-			throw new OAuth2Exception("invalid_request", "Required response type parameter is missing");
+			throw new Exception("invalid_request", "Required response type parameter is missing");
 		}
 		if ($response_type !== "code" AND $response_type !== "token") {
-			throw new OAuth2Exception("unsupported_response_type", "Response type parameter is invalid or unsupported");
+			throw new Exception("unsupported_response_type", "Response type parameter is invalid or unsupported");
 		}
 
-		if ($response_type === "code" AND !$this instanceof IOAuth2Codes) {
-			throw new OAuth2Exception("unsupported_response_type", "Authorization code grant type is not supported");
+		if ($response_type === "code" AND !$this instanceof ICodes) {
+			throw new Exception("unsupported_response_type", "Authorization code grant type is not supported");
 		}
 
-		if ($response_type === "token" AND !$this instanceof IOAuth2Implicit) {
-			throw new OAuth2Exception("unsupported_response_type", "Implicit grant type is not supported");
+		if ($response_type === "token" AND !$this instanceof IImplicit) {
+			throw new Exception("unsupported_response_type", "Implicit grant type is not supported");
 		}
 		
 		$this->response_type = $response_type;
 
-		// Checks client and receives information about the client. If something is wrong the OAuth2Exception will be thrown
+		// Checks client and receives information about the client. If something is wrong the OAuth2\Exception will be thrown
 		$client = $this->checkClient($client_id);
 
 		$this->client_id = $client_id;
@@ -191,26 +188,26 @@ class OAuth2
 		// public clients
 		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
 		if ($client["client_type"] == "public" AND !$redirect_uri) {
-			throw new OAuth2Exception("access_denied", "Public clients MUST register their redirection endpoints");
+			throw new Exception("access_denied", "Public clients MUST register their redirection endpoints");
 		}
 		// confidential client utilizing the implicit grant type
 		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
 		if ($client["client_type"] == "confidential" AND $response_type == "token" AND !$redirect_uri) {
-			throw new OAuth2Exception("access_denied", "Public clients MUST register their redirection endpoints");
+			throw new Exception("access_denied", "Public clients MUST register their redirection endpoints");
 		}
 		// If the client can register multiple redirection URI's, or to register only part of the URI, 
 		// or not to register any redirection URI as specified in the standard
 		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.3
-		// you have to implement IOAuth2DynamicURI and check the client redirect URI based on your implementation
-		if ($this instanceof IOAuth2DynamicURI) {
+		// you have to implement IDynamicURI and check the client redirect URI based on your implementation
+		if ($this instanceof IDynamicURI) {
 			if (!$redirect_uri = $this->checkClientURI($redirect_uri, $client)) {
-				throw new OAuth2Exception("access_denied", "Dynamic configuration for redirect URI failed");
+				throw new Exception("access_denied", "Dynamic configuration for redirect URI failed");
 			}
 		}
-		// default check if you did not implement IOAuth2DynamicURI is to check full redirect_uri
+		// default check if you did not implement IDynamicURI is to check full redirect_uri
 		// check redirect_uri is the same as stored in the DB for the client
 		elseif ($redirect_uri and $client["redirect_uri"] and $redirect_uri != $client["redirect_uri"]) {
-			throw new OAuth2Exception("access_denied", "Redirect URI does not match");
+			throw new Exception("access_denied", "Redirect URI does not match");
 		}
 		
 		// if redirect_uri was not set we'll use registered one
@@ -221,7 +218,7 @@ class OAuth2
 		$this->redirect_uri = $redirect_uri;
 		// After this point we should navigate (redirect) the end-user to the redirect_uri on errors
 
-		// Check the scope is valid. If something is wrong the OAuth2Exception will be thrown
+		// Check the scope is valid. If something is wrong the OAuth2\Exception will be thrown
 		$scope = $this->checkScope($scope);
 		$this->scope = $scope;
 
@@ -251,7 +248,7 @@ class OAuth2
 			try {
 				$this->saveAuthCode($this->code, $this->client_id, $user_id, strtotime("+{$this->expires_in} seconds"), $this->redirect_uri, $this->scope);
 			} catch (\Exception $e) {
-				throw new OAuth2Exception("server_error", $e->getMessage());
+				throw new Exception("server_error", $e->getMessage());
 			}
 
 			$location = $this->rebuildUri($this->redirect_uri, array("code" => $this->code, "state" => $this->state), array());
@@ -268,7 +265,7 @@ class OAuth2
 			try {
 				$this->saveToken($this->access_token, $this->client_id, $user_id, strtotime("+{$this->expires_in} seconds"), $this->scope);
 			} catch (\Exception $e) {
-				throw new OAuth2Exception("server_error", $e->getMessage());
+				throw new Exception("server_error", $e->getMessage());
 			}
 
 			$location = $this->rebuildUri($this->redirect_uri, array(), array(
@@ -290,7 +287,7 @@ class OAuth2
 	{
 		$this->authRequest();
 
-		$this->handleException(new OAuth2Exception("access_denied", "The user denied request"));
+		$this->handleException(new Exception("access_denied", "The user denied request"));
 	}
 
 	/**
@@ -299,7 +296,7 @@ class OAuth2
 	 * @see http://tools.ietf.org/html/rfc6749#section-4.3.2
 	 *  
 	 * @param array $params - Optional. This is mainly for testing purposes. Defaults to $_POST
-	 * @throws OAuth2Exception
+	 * @throws OAuth2\Exception
 	 * @return array - An associative array containing validated parameters passed from the client
 	 */
 	public function tokenRequest(array $params = null)
@@ -317,23 +314,23 @@ class OAuth2
 		// Grant Type
 		$grant_type = empty($params["grant_type"]) ? null : $params["grant_type"];
 		if (!$grant_type) {
-			throw new OAuth2Exception("invalid_request", "Required grant type parameter is missing");
+			throw new Exception("invalid_request", "Required grant type parameter is missing");
 		}
 		if (!preg_match($this->grantTypeRegEx, $grant_type)) {
-			throw new OAuth2Exception("invalid_request", "Invalid grant type");
+			throw new Exception("invalid_request", "Invalid grant type");
 		}
 
-		// Checks client and receives information about the client. In case of error throws OAuth2Exception.
+		// Checks client and receives information about the client. In case of error throws OAuth2\Exception.
 		$client = $this->checkClient($client_id);
 		// Checks received client credentials are identical to those saved in the DB
 		if (!$this->checkSecret($client["client_secret"], $client_secret)) {
-			throw new OAuth2Exception("unauthorized_client", "Wrong client credentials");
+			throw new Exception("unauthorized_client", "Wrong client credentials");
 		}
 
 		// Authorization code
 		if ($grant_type == "authorization_code") {
-			if (!$this instanceof IOAuth2Codes) {
-				throw new OAuth2Exception("unsupported_grant_type", "Authorization code grant is unsupported");	
+			if (!$this instanceof ICodes) {
+				throw new Exception("unsupported_grant_type", "Authorization code grant is unsupported");	
 			}
 
 			$code = empty($params["code"]) ? null : $params["code"];
@@ -341,31 +338,31 @@ class OAuth2
 
 			// Check for missing code
 			if (!$code) {
-				throw new OAuth2Exception("invalid_request", "Required code parameter is missing");
+				throw new Exception("invalid_request", "Required code parameter is missing");
 			}
 			// Check the code with RegEx
 			if (!preg_match($this->codeRegEx, $code)) {
-				throw new OAuth2Exception("invalid_request", "Code parameter is invalid");	
+				throw new Exception("invalid_request", "Code parameter is invalid");	
 			}
 			
 			// retrieve stored data associated with the code (DB)
 			try {
 				$codeData = $this->getAuthCode($code);
 			} catch (\Exception $e) {
-				throw new OAuth2Exception("server_error", $e->getMessage());
+				throw new Exception("server_error", $e->getMessage());
 			}
 
 			if (!$codeData) {
-				throw new OAuth2Exception("invalid_grant", "Invalid code");
+				throw new Exception("invalid_grant", "Invalid code");
 			}
 			if ($codeData["client_id"] != $client_id) {
-				throw new OAuth2Exception("invalid_grant", "Client mismatch");
+				throw new Exception("invalid_grant", "Client mismatch");
 			}
 			if ($codeData["expires"] < time()) {
-				throw new OAuth2Exception("invalid_grant", "Code expired");
+				throw new Exception("invalid_grant", "Code expired");
 			}
 			if ($codeData["redirect_uri"] and ($codeData["redirect_uri"] != $redirect_uri)) {
-				throw new OAuth2Exception("invalid_grant", "Redirect URI mismatch");
+				throw new Exception("invalid_grant", "Redirect URI mismatch");
 			}
 
 			// Check for invalidated authorization codes
@@ -374,18 +371,18 @@ class OAuth2
 			try {
 				$old_token = $this->getTokenWithCode($code);
 			} catch (\Exception $e) {
-				throw new OAuth2Exception("server_error", $e->getMessage());
+				throw new Exception("server_error", $e->getMessage());
 			}
 			if ($old_token) {
 				// ".. and SHOULD revoke (when possible) all tokens previously issued based on that authorization code"
 				// @see http://tools.ietf.org/html/rfc6749#section-4.1.2
 				// it's possible!
 				// revoke all refresh tokens based on this code if any
-				if ($this instanceof IOAuth2RefreshTokens) {
+				if ($this instanceof IRefreshTokens) {
 					try {
 						$this->revokeRefreshTokensWithCode($code);
 					} catch (\Exception $e) {
-						throw new OAuth2Exception("server_error", $e->getMessage());
+						throw new Exception("server_error", $e->getMessage());
 					}
 				}
 				
@@ -393,10 +390,10 @@ class OAuth2
 				try {
 					$this->revokeToken($old_token);
 				} catch (\Exception $e) {
-					throw new OAuth2Exception("server_error", $e->getMessage());
+					throw new Exception("server_error", $e->getMessage());
 				}
 				
-				throw new OAuth2Exception("invalid_grant", "Used authorization code");
+				throw new Exception("invalid_grant", "Used authorization code");
 			}
 
 			// Now we have the authenticated user
@@ -408,8 +405,8 @@ class OAuth2
 
 		// Resource owner password credentials
 		if ($grant_type == "password") {
-			if (!$this instanceof IOAuth2Passwords) {
-				throw new OAuth2Exception("unsupported_grant_type", "Resource owner password credentials grant is unsupported");	
+			if (!$this instanceof IPasswords) {
+				throw new Exception("unsupported_grant_type", "Resource owner password credentials grant is unsupported");	
 			}
 			$code = null;
 
@@ -417,17 +414,17 @@ class OAuth2
 			$password = empty($params["password"]) ? null : $params["password"];
 			$scope = empty($params["scope"]) ? null : $params["scope"];
 
-			// Check the scope is valid. If something is wrong the OAuth2Exception will be thrown
+			// Check the scope is valid. If something is wrong the OAuth2\Exception will be thrown
 			$scope = $this->checkScope($scope);
 
 			if (!$username) {
-				throw new OAuth2Exception("invalid_request", "Required username parameter is missing");
+				throw new Exception("invalid_request", "Required username parameter is missing");
 			}
 			if (!$password) {
-				throw new OAuth2Exception("invalid_request", "Required password parameter is missing");
+				throw new Exception("invalid_request", "Required password parameter is missing");
 			}
 			if (!$user_id = $this->checkUserCredentials($username, $password)) {
-				throw new OAuth2Exception("access_denied", "Invalid resource owner password credentials");
+				throw new Exception("access_denied", "Invalid resource owner password credentials");
 			}
 		}
 
@@ -437,33 +434,33 @@ class OAuth2
 			$user_id = null;
 			$scope = empty($params["scope"]) ? null : $params["scope"];
 			
-			// Check the scope is valid. If something is wrong the OAuth2Exception will be thrown
+			// Check the scope is valid. If something is wrong the Exception will be thrown
 			$scope = $this->checkScope($scope);
 		}
 
 		// Refresh Tokens
 		if ($grant_type == "refresh_token") {
-			if (!$this instanceof IOAuth2RefreshTokens) {
-				throw new OAuth2Exception("unsupported_grant_type", "Refresh token grant is unsupported");
+			if (!$this instanceof IRefreshTokens) {
+				throw new Exception("unsupported_grant_type", "Refresh token grant is unsupported");
 			}
 
 			$refresh_token = empty($params["refresh_token"]) ? null : $params["refresh_token"];
 			if (!$refresh_token) {
-				throw new OAuth2Exception("invalid_request", "Required refresh token parameter is missing");
+				throw new Exception("invalid_request", "Required refresh token parameter is missing");
 			}
 			// get the refresh token from the DB
 			$refreshTokenData = $this->getRefreshToken($refresh_token);
 			if (!$refreshTokenData) {
-				throw new OAuth2Exception("invalid_grant", "Refresh token is invalid");
+				throw new Exception("invalid_grant", "Refresh token is invalid");
 			}
 			if (!empty($refreshTokenData["revoked"])) {
-				throw new OAuth2Exception("invalid_grant", "Refresh token is revoked");
+				throw new Exception("invalid_grant", "Refresh token is revoked");
 			}
 			if ($refreshTokenData["expires"] < time()) {
-				throw new OAuth2Exception("invalid_grant", "Refresh token expired");
+				throw new Exception("invalid_grant", "Refresh token expired");
 			}
 			if ($refreshTokenData["client_id"] != $client_id) {
-				throw new OAuth2Exception("invalid_grant", "Refresh token was issued to another client");
+				throw new Exception("invalid_grant", "Refresh token was issued to another client");
 			}
 			$user_id = $refreshTokenData["user_id"];
 			$code = $refreshTokenData["code"];
@@ -477,7 +474,7 @@ class OAuth2
 				// Check the scope is valid:
 				// "requested scope MUST NOT include any scope not originally granted by the resource owner"
 				// @see http://tools.ietf.org/html/rfc6749#section-6
-				// If something is wrong the OAuth2Exception will be thrown
+				// If something is wrong the OAuth2\Exception will be thrown
 				// including when accepted scopes now and when the refresh token was issued are different
 				$this->checkScope($scope, $refreshTokenData["scope"]); 
 			}
@@ -490,7 +487,7 @@ class OAuth2
 		try {
 			$this->saveToken($access_token, $client_id, $user_id, strtotime("+$expires_in seconds"), $scope, $code);
 		} catch (\Exception $e) {
-			throw new OAuth2Exception("server_error", $e->getMessage());
+			throw new Exception("server_error", $e->getMessage());
 		}
 
 		$params = array(
@@ -499,7 +496,7 @@ class OAuth2
 			"expires_in" 	=> $expires_in,
 		);
 		
-		if ($this instanceof IOAuth2RefreshTokens and $grant_type != "client_credentials" and $grant_type != "refresh_token") {
+		if ($this instanceof IRefreshTokens and $grant_type != "client_credentials" and $grant_type != "refresh_token") {
 			$refresh_token = $this->genCode();
 			$refresh_token_expires_in = $this->config["refresh_token_expires_in"];
 
@@ -507,7 +504,7 @@ class OAuth2
 			try {
 				$this->saveRefreshToken($refresh_token, $client_id, $user_id, strtotime("+$refresh_token_expires_in seconds"), $scope, $code);
 			} catch (\Exception $e) {
-				throw new OAuth2Exception("server_error", $e->getMessage());
+				throw new Exception("server_error", $e->getMessage());
 			}
 
 			$params["refresh_token"] = $refresh_token;
@@ -524,9 +521,9 @@ class OAuth2
 	/**
 	 * Checks received client_id parameter
 	 *
-	 * @throws OAuth2Exception
 	 * @param string $client_id
 	 * @return array - Client's registration information
+	 * @throws OAuth2\Exception
 	 */
 	protected function checkClient($client_id)
 	{
@@ -534,21 +531,21 @@ class OAuth2
 		// the RFC does not exclude the use of unregistered clients, but we do
 		// @see http://tools.ietf.org/html/rfc6749#section-2.4
 		if (!$client_id) {
-			throw new OAuth2Exception("invalid_request", "Required client ID parameter is missing");
+			throw new Exception("invalid_request", "Required client ID parameter is missing");
 		}
 		// verify client_id with some regular expression
 		if (!preg_match($this->clientIdRegEx, $client_id)) {
-			throw new OAuth2Exception("invalid_request", "Client ID is malformed");
+			throw new Exception("invalid_request", "Client ID is malformed");
 		}
 		// get client_id details from some storage (DB)
 		try {
 			$client = $this->getClient($client_id);
 		} catch (\Exception $e) {
-			throw new OAuth2Exception("server_error", $e->getMessage);
+			throw new Exception("server_error", $e->getMessage);
 		}
 
 		if (!$client) {
-			throw new OAuth2Exception("unauthorized_client", "Client does not exist");
+			throw new Exception("unauthorized_client", "Client does not exist");
 		}
 
 		return $client;
@@ -558,30 +555,30 @@ class OAuth2
 	 * Checks the scope is a subset of all supported scopes.
 	 * If the scope was not given check for default scope
 	 *
-	 * @throws OAuth2Exception if requested scope is malformed, invalid or unknown
 	 * @param string $scope
 	 * @param string $granted_scope OPTIONAL
 	 * @return string
+	 * @throws OAuth2\Exception if requested scope is malformed, invalid or unknown
 	 */
 	protected function checkScope($scope, $granted_scope = null)
 	{
 		// verify scope with some regular expression
 		if ($scope and !preg_match($this->scopeRegEx, $scope)) {
-			throw new OAuth2Exception("invalid_scope", "The requested scope is invalid or malformed");
+			throw new Exception("invalid_scope", "The requested scope is invalid or malformed");
 		}
 
 		// check the scope is supported
 		if ($scope and (count(array_diff(explode(" ", $scope), explode(" ", $this->config["scopes"]))) !== 0)) {
-			throw new OAuth2Exception("invalid_scope", "The requested scope is invalid or unknown");
+			throw new Exception("invalid_scope", "The requested scope is invalid or unknown");
 		}
 		if (!is_null($granted_scope) and $scope and (count(array_diff(explode(" ", $scope), explode(" ", $granted_scope))) !== 0)) {
-			throw new OAuth2Exception("invalid_scope", "The requested scope is invalid or unknown");
+			throw new Exception("invalid_scope", "The requested scope is invalid or unknown");
 		}
 
 
 		// check if requested scope is not set, there is no predefined default scope and thus MUST be set
 		if (!$scope and empty($this->config["default_scope"])) {
-			throw new OAuth2Exception("invalid_scope", "The scope is mandatory");
+			throw new Exception("invalid_scope", "The scope is mandatory");
 		}
 
 		// if in the request scope was not set we can fail back to the default scope

@@ -6,13 +6,13 @@
  */
 
 /**
- * OAuth2.0 Exception
+ * OAuth2 Exception
  */
-class OAuth2Exception extends \Exception
+class Exception extends \Exception
 {
 	public $error_description;
 
-	public function __construct($error, $error_description)
+	public function __construct($error, $error_description = null)
 	{
 		parent::__construct($error);
 
@@ -22,6 +22,8 @@ class OAuth2Exception extends \Exception
 
 	public function __toString()
 	{
-		return json_encode(array("error" => $this->getMessage(), "error_description" => $this->error_description));
+		$e = array("error" => $this->getMessage());
+		if (isset($this->error_description)) $e["error_description"] = $this->error_description;
+		return json_encode($e);
 	}
 }

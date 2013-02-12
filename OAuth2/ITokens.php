@@ -8,7 +8,7 @@
 /**
  * This interface MUST be implemented to use OAuth2 server
  */
-interface IOAuth2Tokens
+interface ITokens
 {
 	/**
 	 * Reads client details from storage like DB
