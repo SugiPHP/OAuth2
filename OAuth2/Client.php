@@ -110,8 +110,12 @@ class Client
 		return $result;
 	}
 
-	public function api($uri, array $params = null)
+	public function api($uri = null, array $params = null)
 	{
+		if (empty($uri) and !$uri = $this->config["resource_endpoint"]) {
+			throw new Exception("Required resource URI is missing");
+		}
+
 		if (is_null($params) and $this->config["use_sessions"] and $session = $this->getSession()) {
 			$params = ($session["token_expires"] < time()) ? $session : $this->getToken($session);// new token
 		}
@@ -129,6 +133,7 @@ class Client
 		$headers["Authorization"] = "Bearer " . $params["access_token"];
 
 		$result = $this->curlRequest($uri, "POST", null, $headers);
+
 		// try to generate a new token based on refresh token
 		if (!empty($result["error"]) and $result["error"] == "invalid_token" and $this->config["use_sessions"] and $session = $this->getSession()) {
 			// new token
