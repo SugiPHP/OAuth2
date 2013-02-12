@@ -127,29 +127,16 @@ class OAuth2Client
 		}
 
 		$headers["Authorization"] = "Bearer " . $params["access_token"];
-		try {
-			$result = $this->curlRequest($uri, "POST", null, $headers);
-		} catch (OAuthException $e) {
-			$err = $e->getMessage();
-			if ($err = "invalid_token" and $this->config["use_sessions"] and $session = $this->getSession()) {
-				// new token
-				$token = $this->getToken($session);
-				$headers["Authorization"] = "Bearer " . $token["access_token"];
-				$result = $this->curlRequest($uri, "POST", null, $headers);
-			}
-			else {
-				throw new OAuthException($err);
-			}
-		}
 
-/*		// try to generate a new token based on refresh token
+		$result = $this->curlRequest($uri, "POST", null, $headers);
+		// try to generate a new token based on refresh token
 		if (!empty($result["error"]) and $result["error"] == "invalid_token" and $this->config["use_sessions"] and $session = $this->getSession()) {
 			// new token
 			$token = $this->getToken($session);
 			$headers["Authorization"] = "Bearer " . $token["access_token"];
 			$result = $this->curlRequest($uri, "POST", null, $headers);
 		}
-*/
+
 		if (isset($result["error"])) {
 			throw new OAuthException($result["error"], isset($result["error_description"]) ? $result["error_description"] : null);
 		}
@@ -222,7 +209,7 @@ class OAuth2Client
 		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		$content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
 		if ($curl_error = curl_error($ch)) {
-			throw new OAuth2Exception($curl_error);
+			return array("error" => "curl_error", "error_description" => $curl_error);
 		}
 
 		// Errors ?
@@ -232,7 +219,7 @@ class OAuth2Client
 				$error = $matches[1];
 				$error_description = "";
 				if (preg_match('#error_description="(^")+"#i', $result_header, $matches)) {
-					$error_description = $matches[1];
+					$error_description = $matches[1];	
 				}
 				return array("error" => $error, "error_description" => $error_description);
 			}
