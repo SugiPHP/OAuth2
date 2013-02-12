@@ -5,7 +5,7 @@
  * @license MIT
  */
 
-class OAuth2Client
+class Client
 {
 	/**
 	 * Storage for configuration settings
