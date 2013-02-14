@@ -122,7 +122,7 @@ class Server
 	public function handleException(Exception $e)
 	{
 		if (!$this->redirect_uri) {
-			echo $e;
+			exit($e->getMessage());
 		}
 		else {
 			$params = array("error" => $e->getMessage(), "error_description" => $e->error_description, "state" => $this->state);
