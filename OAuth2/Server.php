@@ -193,7 +193,7 @@ class Server
 		// confidential client utilizing the implicit grant type
 		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.2
 		if ($client["client_type"] == "confidential" AND $response_type == "token" AND !$redirect_uri) {
-			throw new Exception("access_denied", "Public clients MUST register their redirection endpoints");
+			throw new Exception("access_denied", "Clients utilizing the implicit grant type MUST register their redirection endpoints");
 		}
 		// If the client can register multiple redirection URI's, or to register only part of the URI, 
 		// or not to register any redirection URI as specified in the standard
@@ -312,11 +312,11 @@ class Server
 		$client_secret = empty($_SERVER['PHP_AUTH_PW']) ? null : $_SERVER['PHP_AUTH_PW'];
 
 		// Grant Type
-		$grant_type = empty($params["grant_type"]) ? null : $params["grant_type"];
-		if (!$grant_type) {
+		$this->grant_type = empty($params["grant_type"]) ? null : $params["grant_type"];
+		if (!$this->grant_type) {
 			throw new Exception("invalid_request", "Required grant type parameter is missing");
 		}
-		if (!preg_match($this->grantTypeRegEx, $grant_type)) {
+		if (!preg_match($this->grantTypeRegEx, $this->grant_type)) {
 			throw new Exception("invalid_request", "Invalid grant type");
 		}
 
@@ -326,9 +326,10 @@ class Server
 		if (!$this->checkSecret($client["client_secret"], $client_secret)) {
 			throw new Exception("unauthorized_client", "Wrong client credentials");
 		}
+		$this->client_id = $client_id;
 
 		// Authorization code
-		if ($grant_type == "authorization_code") {
+		if ($this->grant_type == "authorization_code") {
 			if (!$this instanceof ICodes) {
 				throw new Exception("unsupported_grant_type", "Authorization code grant is unsupported");	
 			}
@@ -395,27 +396,27 @@ class Server
 				
 				throw new Exception("invalid_grant", "Used authorization code");
 			}
+			$this->code = $code;
 
 			// Now we have the authenticated user
-			$user_id = $codeData["user_id"];
+			$this->user_id = $codeData["user_id"];
 
 			// the scope is stored in the DB when authorization code was issued
-			$scope = $codeData["scope"];
+			$this->scope = $codeData["scope"];
 		}
 
 		// Resource owner password credentials
-		if ($grant_type == "password") {
+		if ($this->grant_type == "password") {
 			if (!$this instanceof IPasswords) {
-				throw new Exception("unsupported_grant_type", "Resource owner password credentials grant is unsupported");	
+				throw new Exception("unsupported_grant_type", "Resource owner password credentials grant is unsupported");
 			}
-			$code = null;
 
 			$username = empty($params["username"]) ? null : $params["username"];
 			$password = empty($params["password"]) ? null : $params["password"];
 			$scope = empty($params["scope"]) ? null : $params["scope"];
 
 			// Check the scope is valid. If something is wrong the OAuth2\Exception will be thrown
-			$scope = $this->checkScope($scope);
+			$this->scope = $this->checkScope($scope);
 
 			if (!$username) {
 				throw new Exception("invalid_request", "Required username parameter is missing");
@@ -426,20 +427,20 @@ class Server
 			if (!$user_id = $this->checkUserCredentials($username, $password)) {
 				throw new Exception("access_denied", "Invalid resource owner password credentials");
 			}
+			$this->user_id = $user_id;
+			$this->username = $username;
 		}
 
 		// Client Credentials
-		if ($grant_type == "client_credentials") {
-			$code = null;
-			$user_id = null;
+		if ($this->grant_type == "client_credentials") {
 			$scope = empty($params["scope"]) ? null : $params["scope"];
 			
 			// Check the scope is valid. If something is wrong the Exception will be thrown
-			$scope = $this->checkScope($scope);
+			$this->scope = $this->checkScope($scope);
 		}
 
 		// Refresh Tokens
-		if ($grant_type == "refresh_token") {
+		if ($this->grant_type == "refresh_token") {
 			if (!$this instanceof IRefreshTokens) {
 				throw new Exception("unsupported_grant_type", "Refresh token grant is unsupported");
 			}
@@ -462,13 +463,13 @@ class Server
 			if ($refreshTokenData["client_id"] != $client_id) {
 				throw new Exception("invalid_grant", "Refresh token was issued to another client");
 			}
-			$user_id = $refreshTokenData["user_id"];
-			$code = $refreshTokenData["code"];
+			$this->code = $refreshTokenData["code"];
+			$this->refresh_token = $refresh_token;
 			
 			$scope = empty($params["scope"]) ? null : $params["scope"];
 			// if scope is omitted than it should be treated as equal to the scope originally granted
 			if (!$scope) {
-				$scope = $refreshTokenData["scope"];
+				$this->scope = $refreshTokenData["scope"];
 			}
 			else {
 				// Check the scope is valid:
@@ -476,8 +477,37 @@ class Server
 				// @see http://tools.ietf.org/html/rfc6749#section-6
 				// If something is wrong the OAuth2\Exception will be thrown
 				// including when accepted scopes now and when the refresh token was issued are different
-				$this->checkScope($scope, $refreshTokenData["scope"]); 
+				$this->scope = $this->checkScope($scope, $refreshTokenData["scope"]); 
 			}
+
+			$this->user_id = $refreshTokenData["user_id"];
+		}
+
+		return array(
+			"client_id"     => $this->client_id,
+			"grant_type"    => $this->grant_type,
+			"scope"         => $this->scope, // optional
+			"code"          => $this->code, // available only for authorization_code grant type
+			"refresh_token" => $this->refresh_token, // available only for refresh_token grant_type
+			"username"      => $this->username, // available only for password grant_type
+			"user_id"       => $this->user_id, // not available only for client_credential grant_type
+		);
+	}
+
+	/**
+	 * Sends token to the client
+	 * 
+	 * @param array $params - additional parameters to send
+	 * @return array - token data sended in response
+	 */
+	public function sendToken(array $params = array())
+	{
+		// validating params
+		if (!$this->grant_type) {
+			throw new Exception("server_error", "Required parameter grant_type is missing");
+		}
+		if (!$this->client_id) {
+			throw new Exception("server_error", "Required parameter client_id is missing");
 		}
 
 		$access_token = $this->genCode();
@@ -485,47 +515,40 @@ class Server
 
 		// save token in some storage (DB)
 		try {
-			$this->saveToken($access_token, $client_id, $user_id, strtotime("+$expires_in seconds"), $scope, $code);
+			$this->saveToken($access_token, $this->client_id, $this->user_id, strtotime("+$expires_in seconds"), $this->scope, $this->code);
 		} catch (\Exception $e) {
 			throw new Exception("server_error", $e->getMessage());
 		}
 
-		$params = array(
+		$response = array(
 			"access_token"	=> $access_token,
 			"token_type"	=> "bearer",
 			"expires_in" 	=> $expires_in,
 		);
 		
-		if ($this instanceof IRefreshTokens and $grant_type != "client_credentials" and $grant_type != "refresh_token") {
+		if ($this instanceof IRefreshTokens and $this->grant_type != "client_credentials" and $this->grant_type != "refresh_token") {
 			$refresh_token = $this->genCode();
 			$refresh_token_expires_in = $this->config["refresh_token_expires_in"];
 
 			// save refresh token
 			try {
-				$this->saveRefreshToken($refresh_token, $client_id, $user_id, strtotime("+$refresh_token_expires_in seconds"), $scope, $code);
+				$this->saveRefreshToken($refresh_token, $this->client_id, $this->user_id, strtotime("+$refresh_token_expires_in seconds"), $this->scope, $this->code);
 			} catch (\Exception $e) {
 				throw new Exception("server_error", $e->getMessage());
 			}
 
-			$params["refresh_token"] = $refresh_token;
+			$response["refresh_token"] = $refresh_token;
 		}
 
-		return $params;
-	}
+		$response = array_merge($params, $response);
 
-	/**
-	 * Sends token to the client
-	 * 
-	 * @param array $params - token generated with tokenRequest()
-	 */
-	public function sendToken($params)
-	{
 		header("HTTP/1.1 200 OK");
 		header("Content-Type: application/json;charset=UTF-8");
 		header("Cache-Control: no-store");
 		header("Pragma: no-cache");
-		echo json_encode($params);
-		exit;
+		echo json_encode($response);
+		
+		return $response;
 	}
 
 	/**

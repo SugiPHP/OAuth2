@@ -117,7 +117,7 @@ class Client
 		}
 
 		if (is_null($params) and $this->config["use_sessions"] and $session = $this->getSession()) {
-			$params = ($session["token_expires"] < time()) ? $session : $this->getToken($session);// new token
+			$params = ($session["token_expires"] > time()) ? $session : $this->getToken($session);// new token
 		}
 
 		if (empty($params["access_token"])) {
