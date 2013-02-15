@@ -90,6 +90,13 @@ class Client
 				"refresh_token" => $params["refresh_token"],
 			);
 		}
+		elseif (isset($params["username"], $params["password"])) {
+			$request = array(
+				"grant_type" => "password",
+				"username"   => $params["username"],
+				"password"   => $params["password"],
+			);
+		}
 		else {
 			throw new Exception("unknown grant type");
 		}
