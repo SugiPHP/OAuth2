@@ -149,6 +149,12 @@ class Client
 		return $result;
 	}
 
+	public function getSession()
+	{
+		$sessionName = $this->getSessionName();
+		return empty($_SESSION[$sessionName]) ? null : $_SESSION[$sessionName];
+	}
+
 	/**
 	 * Sends a cURL request to the OAuth2 Server
 	 *
@@ -266,12 +272,6 @@ class Client
 			$params = array_merge($old, $params);
 		}
 		$_SESSION[$this->getSessionName()] = $params;
-	}
-
-	protected function getSession()
-	{
-		$sessionName = $this->getSessionName();
-		return empty($_SESSION[$sessionName]) ? null : $_SESSION[$sessionName];
 	}
 
 	protected function getSessionName()

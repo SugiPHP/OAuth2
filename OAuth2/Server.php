@@ -122,7 +122,7 @@ class Server
 	public function handleException(Exception $e)
 	{
 		if (!$this->redirect_uri) {
-			exit($e->getMessage());
+			exit($e);
 		}
 		else {
 			$params = array("error" => $e->getMessage(), "error_description" => $e->error_description, "state" => $this->state);
@@ -510,12 +510,47 @@ class Server
 			$params["refresh_token"] = $refresh_token;
 		}
 
+		return $params;
+	}
+
+	/**
+	 * Sends token to the client
+	 * 
+	 * @param array $params - token generated with tokenRequest()
+	 */
+	public function sendToken($params)
+	{
 		header("HTTP/1.1 200 OK");
 		header("Content-Type: application/json;charset=UTF-8");
 		header("Cache-Control: no-store");
 		header("Pragma: no-cache");
 		echo json_encode($params);
 		exit;
+	}
+
+	/**
+	 * Generates a hash
+	 * This is not a part of the OAuth.
+	 *
+	 * @param string $secret
+	 * @return string
+	 */
+	public static function cryptSecret($secret)
+	{
+		return crypt($secret, '$2a$10$' .  substr(sha1(mt_rand()), 0, 22));
+	}
+
+	/**
+	 * Compares a secret against a hash
+	 * This is not a part of the OAuth.
+	 *
+	 * @param string $hash - secret hash made with cryptSecret() method
+	 * @param string $secret - secret
+	 * @return boolean
+	 */
+	public static function checkSecret($hash, $secret)
+	{
+		return ($hash === crypt($secret, substr($hash, 0, 29)));
 	}
 
 	/**
@@ -664,27 +699,14 @@ class Server
 	}
 
 	/**
-	 * Generates a hash
-	 * This is not a part of the OAuth.
-	 *
-	 * @param string $secret
-	 * @return string
+	 * Not in use
 	 */
-	public static function cryptSecret($secret)
+	protected function sendBasicAuthHeaders()
 	{
-		return crypt($secret, '$2a$10$' .  substr(sha1(mt_rand()), 0, 22));
-	}
-
-	/**
-	 * Compares a secret against a hash
-	 * This is not a part of the OAuth.
-	 *
-	 * @param string $hash - secret hash made with cryptSecret() method
-	 * @param string $secret - secret
-	 * @return boolean
-	 */
-	public static function checkSecret($hash, $secret)
-	{
-		return ($hash === crypt($secret, substr($hash, 0, 29)));
+		if (!isset($_SERVER["PHP_AUTH_USER"])) {
+			header('WWW-Authenticate: Basic realm="OAuth2 Server"');
+			header("HTTP/1.0 401 Unauthorized");
+			exit(json_encode(array("error" => "unauthorized_client", "error_description" => "The server accepts only HTTP Basic Authentication scheme")));
+		}
 	}
 }
