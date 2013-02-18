@@ -1,7 +1,7 @@
 <?php namespace OAuth2;
 /**
  * @package OAuth2
- * @author Plamen Popov <tzappa@gmail.com>
+ * @author  Plamen Popov <tzappa@gmail.com>
  * @license MIT
  */
 

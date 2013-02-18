@@ -1,7 +1,7 @@
 <?php namespace OAuth2;
 /**
  * @package OAuth2
- * @author Plamen Popov <tzappa@gmail.com>
+ * @author  Plamen Popov <tzappa@gmail.com>
  * @license MIT
  */
 
@@ -9,14 +9,14 @@
  * Implement this interface to use authorization codes.
  * @see http://tools.ietf.org/html/rfc6749#section-1.3.1
  */
-interface ICodes extends ITokens
+interface AuthCodeInterface extends TokenInterface
 {
 	/**
 	 * Saves authorization request code. Based on this code the client will ask for access token.
 	 * 
 	 * @param string $code
 	 * @param string $client_id
-	 * @param mixed $user_id - the value passed in OAuth::grantAccess() method
+	 * @param mixed $user_id - the value passed in Server::grantAccess() method
 	 * @param integer $expires
 	 * @param string $redirect_uri
 	 * @param string $scope
@@ -25,7 +25,7 @@ interface ICodes extends ITokens
 
 	/**
 	 * Reads authorization code data from the storage.
-	 * @see IOAuth2Codes::saveAuthCode()
+	 * @see saveAuthCode()
 	 * 
 	 * @param string $code
 	 * @return array|NULL - An associative array:

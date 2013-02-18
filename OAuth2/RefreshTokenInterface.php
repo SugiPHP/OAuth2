@@ -1,14 +1,14 @@
 <?php namespace OAuth2;
 /**
  * @package OAuth2
- * @author Plamen Popov <tzappa@gmail.com>
+ * @author  Plamen Popov <tzappa@gmail.com>
  * @license MIT
  */
 
 /**
  * Implement this interface if you want to support refresh tokens
  */
-interface IRefreshTokens extends ITokens
+interface RefreshTokenInterface extends TokenInterface
 {
 	/**
 	 * Save refresh token data for further use

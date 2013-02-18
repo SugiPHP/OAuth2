@@ -1,14 +1,14 @@
 <?php namespace OAuth2;
 /**
  * @package OAuth2
- * @author Plamen Popov <tzappa@gmail.com>
+ * @author  Plamen Popov <tzappa@gmail.com>
  * @license MIT
  */
 
 /**
  * This interface MUST be implemented to use OAuth2 server
  */
-interface ITokens
+interface TokenInterface
 {
 	/**
 	 * Reads client details from storage like DB

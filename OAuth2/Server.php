@@ -1,7 +1,7 @@
 <?php namespace OAuth2;
 /**
  * @package OAuth2
- * @author Plamen Popov <tzappa@gmail.com>
+ * @author  Plamen Popov <tzappa@gmail.com>
  * @license MIT
  */
 
@@ -63,8 +63,8 @@ class Server
 	 */
 	protected function __construct(array $config = array())
 	{
-		if (!$this instanceof ITokens) {
-			throw new \Exception("To use OAuth2 you must first implement ITokens");
+		if (!$this instanceof TokenInterface) {
+			throw new Exception("server_error", "To use OAuth2 you must first implement TokenInterface");
 		}
 
 		// Default configuration options
@@ -170,11 +170,11 @@ class Server
 			throw new Exception("unsupported_response_type", "Response type parameter is invalid or unsupported");
 		}
 
-		if ($response_type === "code" AND !$this instanceof ICodes) {
+		if ($response_type === "code" AND !$this instanceof AuthCodeInterface) {
 			throw new Exception("unsupported_response_type", "Authorization code grant type is not supported");
 		}
 
-		if ($response_type === "token" AND !$this instanceof IImplicit) {
+		if ($response_type === "token" AND !$this instanceof ImplicitGrantInterface) {
 			throw new Exception("unsupported_response_type", "Implicit grant type is not supported");
 		}
 		
@@ -198,13 +198,13 @@ class Server
 		// If the client can register multiple redirection URI's, or to register only part of the URI, 
 		// or not to register any redirection URI as specified in the standard
 		// @see http://tools.ietf.org/html/rfc6749#section-3.1.2.3
-		// you have to implement IDynamicURI and check the client redirect URI based on your implementation
-		if ($this instanceof IDynamicURI) {
+		// you have to implement DynamicUriInterface and check the client redirect URI based on your implementation
+		if ($this instanceof DynamicUriInterface) {
 			if (!$redirect_uri = $this->checkClientURI($redirect_uri, $client)) {
 				throw new Exception("access_denied", "Dynamic configuration for redirect URI failed");
 			}
 		}
-		// default check if you did not implement IDynamicURI is to check full redirect_uri
+		// default check if you did not implement DynamicUriInterface is to check full redirect_uri
 		// check redirect_uri is the same as stored in the DB for the client
 		elseif ($redirect_uri and $client["redirect_uri"] and $redirect_uri != $client["redirect_uri"]) {
 			throw new Exception("access_denied", "Redirect URI does not match");
@@ -330,7 +330,7 @@ class Server
 
 		// Authorization code
 		if ($this->grant_type == "authorization_code") {
-			if (!$this instanceof ICodes) {
+			if (!$this instanceof AuthCodeInterface) {
 				throw new Exception("unsupported_grant_type", "Authorization code grant is unsupported");	
 			}
 
@@ -379,7 +379,7 @@ class Server
 				// @see http://tools.ietf.org/html/rfc6749#section-4.1.2
 				// it's possible!
 				// revoke all refresh tokens based on this code if any
-				if ($this instanceof IRefreshTokens) {
+				if ($this instanceof RefreshTokenInterface) {
 					try {
 						$this->revokeRefreshTokensWithCode($code);
 					} catch (\Exception $e) {
@@ -407,7 +407,7 @@ class Server
 
 		// Resource owner password credentials
 		if ($this->grant_type == "password") {
-			if (!$this instanceof IPasswords) {
+			if (!$this instanceof PasswordInterface) {
 				throw new Exception("unsupported_grant_type", "Resource owner password credentials grant is unsupported");
 			}
 
@@ -441,7 +441,7 @@ class Server
 
 		// Refresh Tokens
 		if ($this->grant_type == "refresh_token") {
-			if (!$this instanceof IRefreshTokens) {
+			if (!$this instanceof RefreshTokenInterface) {
 				throw new Exception("unsupported_grant_type", "Refresh token grant is unsupported");
 			}
 
@@ -526,7 +526,7 @@ class Server
 			"expires_in" 	=> $expires_in,
 		);
 		
-		if ($this instanceof IRefreshTokens and $this->grant_type != "client_credentials" and $this->grant_type != "refresh_token") {
+		if ($this instanceof RefreshTokenInterface and $this->grant_type != "client_credentials" and $this->grant_type != "refresh_token") {
 			$refresh_token = $this->genCode();
 			$refresh_token_expires_in = $this->config["refresh_token_expires_in"];
 
@@ -599,7 +599,7 @@ class Server
 		try {
 			$client = $this->getClient($client_id);
 		} catch (\Exception $e) {
-			throw new Exception("server_error", $e->getMessage);
+			throw new Exception("server_error", $e->getMessage());
 		}
 
 		if (!$client) {

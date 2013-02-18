@@ -1,14 +1,14 @@
 <?php namespace OAuth2;
 /**
  * @package OAuth2
- * @author Plamen Popov <tzappa@gmail.com>
+ * @author  Plamen Popov <tzappa@gmail.com>
  * @license MIT
  */
 
 /**
  * Implement this interface if you want to support Resource Owner Password Credentials grant type
  */
-interface IPasswords extends ITokens
+interface PasswordInterface extends TokenInterface
 {	
 	/**
 	 * Retrieves info for a registered user, matching both username and password
