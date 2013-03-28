@@ -1,5 +1,5 @@
 {
-    "name": "sugiphp/config",
+    "name": "sugiphp/oauth2",
     "type": "library",
     "description": "OAuth2 Server",
     "keywords": ["OAuth2", "authorization", "server", "rfc6749"],
@@ -16,6 +16,6 @@
     "autoload": {
         "SugiPHP\\OAuth2\\": ""
     },
-    "target-dir": "SugiPHP/Config",
+    "target-dir": "SugiPHP/OAuth2",
     "minimum-stability": "dev"
 }
