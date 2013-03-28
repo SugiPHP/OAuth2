@@ -14,7 +14,9 @@
         "php": ">=5.3"
     },
     "autoload": {
-        "SugiPHP\\OAuth2\\": ""
+        "psr-0": { 
+            "SugiPHP\\OAuth2\\": ""
+        }
     },
     "target-dir": "SugiPHP/OAuth2",
     "minimum-stability": "dev"
