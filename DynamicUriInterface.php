@@ -1,9 +1,12 @@
-<?php namespace OAuth2;
+<?php
 /**
- * @package OAuth2
- * @author  Plamen Popov <tzappa@gmail.com>
- * @license MIT
+ * @package    SugiPHP
+ * @subpackage OAuth2
+ * @author     Plamen Popov <tzappa@gmail.com>
+ * @license    http://opensource.org/licenses/mit-license.php (MIT License)
  */
+
+namespace SugiPHP\OAuth2;
 
 /**
  * Implement this interface if the client can register multiple redirection URI's, or to register only part of the URI, 

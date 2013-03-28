@@ -1,9 +1,12 @@
-<?php namespace OAuth2;
+<?php
 /**
- * @package OAuth2
- * @author  Plamen Popov <tzappa@gmail.com>
- * @license MIT
+ * @package    SugiPHP
+ * @subpackage OAuth2
+ * @author     Plamen Popov <tzappa@gmail.com>
+ * @license    http://opensource.org/licenses/mit-license.php (MIT License)
  */
+
+namespace SugiPHP\OAuth2;
 
 /**
  * This interface MUST be implemented to use OAuth2 server

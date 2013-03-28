@@ -1,19 +1,21 @@
 {
-    "name": "tzappa/oauth2",
-    "description": "OAuth2.0",
+    "name": "sugiphp/config",
     "type": "library",
+    "description": "OAuth2 Server",
+    "keywords": ["OAuth2", "authorization", "server", "rfc6749"],
     "licence": "MIT",
     "authors": [
         {
             "name": "Plamen Popov",
-            "email": "tzappa@gmail.com",
-            "role": "Developer"
+            "email": "tzappa@gmail.com"
         }
     ],
-    "autoload": {
-        "psr-0": {"OAuth2": ""}
-    },
     "require": {
         "php": ">=5.3"
-    }
+    },
+    "autoload": {
+        "SugiPHP\\OAuth2\\": ""
+    },
+    "target-dir": "SugiPHP/Config",
+    "minimum-stability": "dev"
 }
