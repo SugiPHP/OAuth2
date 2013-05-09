@@ -84,7 +84,11 @@ class Client
 				"grant_type" => "authorization_code",
 				"code"       => $params["code"],
 			);
-			if (!empty($params["redirect_uri"])) $request["redirect_uri"] = $params["redirect_uri"];
+			if (!empty($params["redirect_uri"])) {
+				$request["redirect_uri"] = $params["redirect_uri"];
+			} elseif (!empty($this->config["redirect_uri"])) {
+				$request["redirect_uri"] = $this->config["redirect_uri"];
+			}
 		}
 		// Get token in exchange of refresh_token
 		elseif (!empty($params["refresh_token"])) {
