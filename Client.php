@@ -124,20 +124,10 @@ class Client
 		return $result;
 	}
 
-	public function api($uri = null, array $params = null)
+	public function api($uri = null, array $post = null, array $params = null)
 	{
 		if (empty($uri) and !$uri = $this->config["resource_endpoint"]) {
 			throw new Exception("Required resource URI is missing");
-		}
-
-		if ($this->config["use_sessions"] and $session = $this->getSession()) {
-			$session_params = ($session["token_expires"] > time()) ? $session : $this->getToken($session); // new token
-		}
-
-		if (is_null($params)) {
-			$params = $session_params;
-		} else {
-			$params = static::array_merge_recursive_distinct($session_params, $params);
 		}
 
 		if (is_null($params) and $this->config["use_sessions"] and $session = $this->getSession()) {
@@ -156,7 +146,7 @@ class Client
 
 		$headers["Authorization"] = "Bearer " . $params["access_token"];
 
-		$result = $this->curlRequest($uri, "POST", null, $headers);
+		$result = $this->curlRequest($uri, "POST", $post, $headers);
 
 		// try to generate a new token based on refresh token
 		if (!empty($result["error"]) and $result["error"] == "invalid_token" and $this->config["use_sessions"] and $session = $this->getSession()) {
@@ -301,45 +291,5 @@ class Client
 	protected function getSessionName()
 	{
 		return md5($this->config["auth_endpoint"]);
-	}
-
-	/**
-	 * array_merge_recursive does indeed merge arrays, but it converts values with duplicate
-	 * keys to arrays rather than overwriting the value in the first array with the duplicate
-	 * value in the second array, as array_merge does. I.e., with array_merge_recursive,
-	 * this happens (documented behavior):
-	 *
-	 * array_merge_recursive(array('key' => 'org value'), array('key' => 'new value'));
-	 *     => array('key' => array('org value', 'new value'));
-	 *
-	 * array_merge_recursive_distinct does not change the datatypes of the values in the arrays.
-	 * Matching keys' values in the second array overwrite those in the first array, as is the
-	 * case with array_merge, i.e.:
-	 *
-	 * array_merge_recursive_distinct(array('key' => 'org value'), array('key' => 'new value'));
-	 *     => array('key' => array('new value'));
-	 *
-	 * Parameters are passed by reference, though only for performance reasons. They're not
-	 * altered by this function.
-	 *
-	 * @param  array $array1
-	 * @param  array $array2
-	 * @return array
-	 * @author Daniel <daniel (at) danielsmedegaardbuus (dot) dk>
-	 * @author Gabriel Sobrinho <gabriel (dot) sobrinho (at) gmail (dot) com>
-	 */
-	protected static function array_merge_recursive_distinct(array &$array1, array &$array2)
-	{
-		$merged = $array1;
-
-		foreach ($array2 as $key => &$value) {
-			if (is_array($value) && isset($merged[$key]) && is_array($merged[$key])) {
-				$merged[$key] = static::array_merge_recursive_distinct($merged[$key], $value);
-			} else {
-				$merged[$key] = $value;
-			}
-		}
-
-		return $merged;
 	}
 }
