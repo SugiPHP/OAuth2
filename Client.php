@@ -153,7 +153,7 @@ class Client
 			// new token
 			$token = $this->getToken($session);
 			$headers["Authorization"] = "Bearer " . $token["access_token"];
-			$result = $this->curlRequest($uri, "POST", null, $headers);
+			$result = $this->curlRequest($uri, "POST", $post, $headers);
 		}
 
 		if (isset($result["error"])) {
@@ -188,6 +188,7 @@ class Client
 			CURLOPT_SSL_VERIFYPEER => false,
 			CURLOPT_SSL_VERIFYHOST => false,
 			CURLOPT_HEADER         => true, // we need the result header
+			CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_0,
 		);
 
 		if ($method == "POST") {
