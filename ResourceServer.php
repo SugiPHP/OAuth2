@@ -70,7 +70,7 @@ abstract class ResourceServer
 		$this->scope = $scope;
 
 		// Extract Bearer token
-		if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+		if (isset($_SERVER["HTTP_AUTHORIZATION"])) {
 			$authorization = $_SERVER["HTTP_AUTHORIZATION"];
 			if (!preg_match($this->bearerTokenRegEx, $authorization, $matches)) {
 				throw new Exception("", "");
@@ -100,7 +100,7 @@ abstract class ResourceServer
 			throw new Exception("invalid_request", "Required token parameter is missing");
 		}
 
-		$tokenData = $this->getToken($access_token);
+		$tokenData = $this->getToken(md5($access_token));
 
 		if (!$tokenData) {
 			throw new Exception("invalid_token", "The token provided is invalid");

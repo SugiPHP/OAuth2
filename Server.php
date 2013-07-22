@@ -264,9 +264,9 @@ class Server
 			$this->token_type = "bearer";
 			$this->expires_in = $this->config["token_expires_in"];
 
-			// save token in some storage (DB)
+			// save token (hashed) in some storage (DB)
 			try {
-				$this->saveToken($this->access_token, $this->client_id, $user_id, strtotime("+{$this->expires_in} seconds"), $this->scope);
+				$this->saveToken(md5($this->access_token), $this->client_id, $user_id, strtotime("+{$this->expires_in} seconds"), $this->scope);
 			} catch (\Exception $e) {
 				throw new Exception("server_error", $e->getMessage());
 			}
@@ -516,9 +516,9 @@ class Server
 		$access_token = $this->genCode();
 		$expires_in = $this->config["token_expires_in"];
 
-		// save token in some storage (DB)
+		// save token (hashed) in some storage (DB)
 		try {
-			$this->saveToken($access_token, $this->client_id, $this->user_id, strtotime("+$expires_in seconds"), $this->scope, $this->code);
+			$this->saveToken(md5($access_token), $this->client_id, $this->user_id, strtotime("+$expires_in seconds"), $this->scope, $this->code);
 		} catch (\Exception $e) {
 			throw new Exception("server_error", $e->getMessage());
 		}
