@@ -717,11 +717,16 @@ class Server
 	 */
 	protected function genCode()
 	{
+		// make it random
 		$code = mt_rand() . uniqid(mt_rand(), true) . microtime(true) . mt_rand();
+		// SHA-512 produces 128 chars
+		// base64_encode for the sha-512 produces 172 chars, 171 without "=".
+		$code = trim(base64_encode(hash("sha512", $code)), "=");
+		// extract only part of it
+		$required_length = $this->config["code_size"];
+		$code = substr($code, mt_rand(0, strlen($code) - $required_length - 1), $required_length);
 
-		// SHA-512 produces 128 chars - we can extract only some
-		$len = $this->config["code_size"];
-		return substr(hash('sha512', $code), mt_rand(0, 128 - $len), $len);
+		return $code;
 	}
 
 	/**
