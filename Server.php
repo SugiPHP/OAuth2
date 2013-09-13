@@ -97,7 +97,9 @@ class Server
 		}
 
 		// regular expression for codes based on sha512 and the length of the codes
-		$this->codeRegEx = '#^[0-9a-f]{' . $this->config["code_size"] . '}$#';
+		// $this->codeRegEx = '#^[0-9a-f]{' . $this->config["code_size"] . '}$#';
+		// regular expression for codes based on base64_encode and the lenght of the codes
+		$this->codeRegEx = '#^[0-9a-zA-Z]{' . $this->config["code_size"] . '}$#';
 	}
 
 	/**
