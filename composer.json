@@ -3,7 +3,7 @@
     "type": "library",
     "description": "OAuth2 Server",
     "keywords": ["OAuth2", "authorization", "server", "rfc6749"],
-    "licence": "MIT",
+    "license": "MIT",
     "authors": [
         {
             "name": "Plamen Popov",
@@ -14,10 +14,9 @@
         "php": ">=5.3"
     },
     "autoload": {
-        "psr-0": { 
+        "psr-4": {
             "SugiPHP\\OAuth2\\": ""
         }
     },
-    "target-dir": "SugiPHP/OAuth2",
     "minimum-stability": "dev"
 }
